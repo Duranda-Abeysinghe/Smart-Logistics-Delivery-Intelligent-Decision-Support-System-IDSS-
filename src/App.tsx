@@ -1,122 +1,117 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React, { useState, useMemo } from 'react';
+import { ActiveModule, LogisticsNode, LogisticsEdge, Vehicle, Driver, DeliveryOrder } from './types';
+import { DEFAULT_NODES, DEFAULT_EDGES, DEFAULT_VEHICLES, DEFAULT_DRIVERS, DEFAULT_ORDERS } from './data/defaultData';
+import { Graph } from './dataStructures/Graph';
+import { generateSyntheticDataset } from './algorithms/benchmark/datasetGenerator';
+import { Navbar } from './components/layout/Navbar';
+import { DashboardOverview } from './components/dashboard/DashboardOverview';
+import { RouteOptimizationView } from './components/module1_route/RouteOptimizationView';
+import { ResourceAllocationView } from './components/module2_allocation/ResourceAllocationView';
+import { NetworkAnalysisView } from './components/module3_network/NetworkAnalysisView';
+import { IntelligentDecisionView } from './components/module4_decision/IntelligentDecisionView';
+import { OptimizationView } from './components/module5_optimization/OptimizationView';
+import { BenchmarkSuiteView } from './components/evaluation/BenchmarkSuiteView';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
+  const [datasetSize, setDatasetSize] = useState<'default' | 'medium' | 'large'>('default');
+
+  // Generate or load dataset based on selection
+  const currentData = useMemo(() => {
+    if (datasetSize === 'default') {
+      const graph = new Graph();
+      DEFAULT_NODES.forEach(n => graph.addNode(n));
+      DEFAULT_EDGES.forEach(e => graph.addEdge(e, true));
+
+      return {
+        graph,
+        nodes: DEFAULT_NODES,
+        edges: DEFAULT_EDGES,
+        vehicles: DEFAULT_VEHICLES,
+        drivers: DEFAULT_DRIVERS,
+        orders: DEFAULT_ORDERS
+      };
+    } else if (datasetSize === 'medium') {
+      return generateSyntheticDataset(50);
+    } else {
+      return generateSyntheticDataset(150);
+    }
+  }, [datasetSize]);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
+      {/* Top Navigation Bar */}
+      <Navbar
+        activeModule={activeModule}
+        onSelectModule={setActiveModule}
+        datasetSize={datasetSize}
+        onChangeDatasetSize={setDatasetSize}
+      />
 
-      <div className="ticks"></div>
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        {activeModule === 'dashboard' && (
+          <DashboardOverview
+            onSelectModule={setActiveModule}
+            nodes={currentData.nodes}
+            vehicles={currentData.vehicles}
+            drivers={currentData.drivers}
+            orders={currentData.orders}
+          />
+        )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {activeModule === 'route' && (
+          <RouteOptimizationView
+            graph={currentData.graph}
+            nodes={currentData.nodes}
+            edges={currentData.edges}
+          />
+        )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        {activeModule === 'allocation' && (
+          <ResourceAllocationView
+            orders={currentData.orders}
+            vehicles={currentData.vehicles}
+            drivers={currentData.drivers}
+          />
+        )}
+
+        {activeModule === 'network' && (
+          <NetworkAnalysisView
+            graph={currentData.graph}
+            nodes={currentData.nodes}
+            edges={currentData.edges}
+          />
+        )}
+
+        {activeModule === 'decision' && (
+          <IntelligentDecisionView
+            orders={currentData.orders}
+          />
+        )}
+
+        {activeModule === 'optimization' && (
+          <OptimizationView
+            nodes={currentData.nodes}
+          />
+        )}
+
+        {activeModule === 'evaluation' && (
+          <BenchmarkSuiteView />
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-slate-900 border-t border-slate-800 py-6 text-slate-400 text-xs text-center">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div>
+            <span className="font-bold text-slate-200">Smart Logistics & Delivery IDSS</span> • Multi-Algorithm Decision Support System
+          </div>
+          <div className="text-slate-500 text-[11px]">
+            React + Vite Frontend • ASP.NET Core API Services • Entity Framework Core • MySQL 8.0
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
 }
-
-export default App
