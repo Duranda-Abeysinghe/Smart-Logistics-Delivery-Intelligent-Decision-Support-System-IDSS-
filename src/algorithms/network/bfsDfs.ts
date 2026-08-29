@@ -84,5 +84,51 @@ export function runNetworkTraversal(graph: Graph, startNodeId?: string): Connect
       bridgeDFS(node);
     }
 }
+  // Calculate Graph Diameter (max shortest path in largest component)
+  let maxDistance = 0;
+  for (const source of allNodes) {
+    const distMap = new Map<string, number>();
+    distMap.set(source, 0);
+    const queue = [source];
 
+    while (queue.length > 0) {
+      const curr = queue.shift()!;
+      const d = distMap.get(curr)!;
+      for (const edge of graph.getNeighbors(curr)) {
+        if (!edge.isBlocked && !distMap.has(edge.target)) {
+          distMap.set(edge.target, d + 1);
+          queue.push(edge.target);
+          if (d + 1 > maxDistance) {
+            maxDistance = d + 1;
+          }
+        }
+      }
+    }
   }
+
+  const numEdges = graph.getAllEdges().length;
+  const maxPossibleEdges = (n * (n - 1)) / 2;
+  const graphDensity = maxPossibleEdges > 0 ? Math.round((numEdges / maxPossibleEdges) * 1000) / 1000 : 0;
+
+  const endTime = performance.now();
+  const executionTimeMs = endTime - startTime;
+
+  return {
+    connectedComponents: allComponents,
+    componentCount: allComponents.length,
+    bridges,
+    isFullyConnected: allComponents.length <= 1,
+    graphDiameter: maxDistance,
+    graphDensity,
+    traversalOrder: bfsTraversalOrder,
+    metrics: {
+      algorithmName: 'BFS/DFS Connectivity & Tarjan Bridges',
+      executionTimeMs: Math.round(executionTimeMs * 1000) / 1000,
+      executionTimeUs: Math.round(executionTimeMs * 1000),
+      nodesVisited: n,
+      timeComplexity: 'O(V + E)',
+      spaceComplexity: 'O(V)'
+    }
+  };
+}
+
