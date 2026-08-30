@@ -117,7 +117,102 @@ export const IntelligentDecisionView: React.FC<IntelligentDecisionViewProps> = (
         </div>
       </div>
 
+          {/* Control Sliders (When Multi-Criteria Priority Scoring Active) */}
+      {activeTab === 'scoring' && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <Sliders className="w-4 h-4 text-amber-600" />
+              Dynamic Criteria Weight Calibration
+            </h2>
+            <span className="text-[11px] font-mono text-slate-500">
+              Normalized Weights (Sum: {(weights.urgencyWeight + weights.valueWeight + weights.tierWeight + weights.perishabilityWeight + weights.fragilityWeight).toFixed(2)})
+            </span>
+          </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
+            <div>
+              <div className="flex justify-between font-semibold text-slate-700 mb-1">
+                <span>Deadline Urgency</span>
+                <span className="text-amber-700 font-mono font-bold">{(weights.urgencyWeight * 100).toFixed(0)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.05"
+                max="0.6"
+                step="0.05"
+                value={weights.urgencyWeight}
+                onChange={(e) => setWeights({ ...weights, urgencyWeight: parseFloat(e.target.value) })}
+                className="w-full accent-amber-600 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between font-semibold text-slate-700 mb-1">
+                <span>Cargo Item Value</span>
+                <span className="text-amber-700 font-mono font-bold">{(weights.valueWeight * 100).toFixed(0)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.05"
+                max="0.6"
+                step="0.05"
+                value={weights.valueWeight}
+                onChange={(e) => setWeights({ ...weights, valueWeight: parseFloat(e.target.value) })}
+                className="w-full accent-amber-600 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between font-semibold text-slate-700 mb-1">
+                <span>Customer SLA Tier</span>
+                <span className="text-amber-700 font-mono font-bold">{(weights.tierWeight * 100).toFixed(0)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.05"
+                max="0.6"
+                step="0.05"
+                value={weights.tierWeight}
+                onChange={(e) => setWeights({ ...weights, tierWeight: parseFloat(e.target.value) })}
+                className="w-full accent-amber-600 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between font-semibold text-slate-700 mb-1">
+                <span>Perishability Penalty</span>
+                <span className="text-amber-700 font-mono font-bold">{(weights.perishabilityWeight * 100).toFixed(0)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.05"
+                max="0.6"
+                step="0.05"
+                value={weights.perishabilityWeight}
+                onChange={(e) => setWeights({ ...weights, perishabilityWeight: parseFloat(e.target.value) })}
+                className="w-full accent-amber-600 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between font-semibold text-slate-700 mb-1">
+                <span>Fragility Care</span>
+                <span className="text-amber-700 font-mono font-bold">{(weights.fragilityWeight * 100).toFixed(0)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.05"
+                max="0.6"
+                step="0.05"
+                value={weights.fragilityWeight}
+                onChange={(e) => setWeights({ ...weights, fragilityWeight: parseFloat(e.target.value) })}
+                className="w-full accent-amber-600 cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
         </div>
       </div>
