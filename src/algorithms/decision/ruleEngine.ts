@@ -1,4 +1,4 @@
-import { DeliveryOrder } from '../../types';
+import { DeliveryOrder, AlgorithmMetrics } from '../../types';
 
 export interface BusinessRule {
   id: string;
@@ -82,3 +82,91 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     predicate: (o) => o.fragility === 'High'
   }
 ];
+
+/**
+ * Rule-Based Expert System for Logistics Decision Inference
+ * Time Complexity: O(N * R) where N = orders, R = active rules
+ * Space Complexity: O(N * R)
+ */
+export function runRuleBasedExpertSystem(
+  orders: DeliveryOrder[],
+  rules: BusinessRule[] = LOGISTICS_RULESET
+): { results: RuleEvaluationResult[]; metrics: AlgorithmMetrics } {
+  const startTime = performance.now();
+
+  const results: RuleEvaluationResult[] = orders.map(order => {
+    const triggered = rules.filter(r => r.predicate(order));
+    triggered.sort((a, b) => a.priorityLevel - b.priorityLevel);
+
+    const mandatoryEquipment: string[] = [];
+    const handlingInstructions: string[] = [];
+
+    for (const rule of triggered) {
+      if (rule.id === 'R1-COLDCHAIN') {
+        mandatoryEquipment.push('Insulated Refrigerator Pod (-18°C)');
+        handlingInstructions.push('Maintain active thermal telemetry log.');
+      }
+
+      if (rule.id === 'R3-HEAVY-CARGO') {
+        mandatoryEquipment.push('Hydraulic Tail-Lift', 'Pallet Jack');
+        handlingInstructions.push('Two-person team required for offloading.');
+      }
+
+      if (rule.id === 'R4-HIGH-VALUE') {
+        mandatoryEquipment.push('Tamper-Evident Security Seal');
+        handlingInstructions.push('Require dual signature on delivery receipt.');
+      }
+
+      if (rule.id === 'R6-FRAGILE-CARE') {
+        mandatoryEquipment.push('Air-Cushion Corner Guards');
+        handlingInstructions.push('Do NOT stack other cargo on top.');
+      }
+
+      if (rule.id === 'R5-ECO-BIKE') {
+        mandatoryEquipment.push('Weatherproof Cargo Pannier');
+        handlingInstructions.push('Urban cycleway transit approved.');
+      }
+    }
+
+    const finalDispatchDecision =
+      triggered.some(
+        r => r.id === 'R1-COLDCHAIN' || r.id === 'R2-PLATINUM-SLA'
+      )
+        ? 'EXPEDITED DIRECT DISPATCH'
+        : triggered.some(r => r.id === 'R3-HEAVY-CARGO')
+          ? 'HEAVY FREIGHT CONSOLIDATION'
+          : 'STANDARD SCHEDULED TRANSIT';
+
+    const justificationSummary =
+      triggered.length > 0
+        ? `Order triggered ${triggered.length} operational rules (${triggered
+            .map(r => r.id)
+            .join(', ')}) enforcing specialized SLA and safety compliance.`
+        : 'Standard operating procedure applied with default SLA window.';
+
+    return {
+      orderId: order.id,
+      customerName: order.customerName,
+      triggeredRules: triggered,
+      finalDispatchDecision,
+      mandatoryEquipment: Array.from(new Set(mandatoryEquipment)),
+      handlingInstructions: Array.from(new Set(handlingInstructions)),
+      justificationSummary
+    };
+  });
+
+  const endTime = performance.now();
+  const executionTimeMs = endTime - startTime;
+
+  return {
+    results,
+    metrics: {
+      algorithmName: 'Rule-Based Inference Expert Engine',
+      executionTimeMs: Math.round(executionTimeMs * 1000) / 1000,
+      executionTimeUs: Math.round(executionTimeMs * 1000),
+      nodesVisited: orders.length * rules.length,
+      timeComplexity: 'O(N * R)',
+      spaceComplexity: 'O(N)'
+    }
+  };
+}
