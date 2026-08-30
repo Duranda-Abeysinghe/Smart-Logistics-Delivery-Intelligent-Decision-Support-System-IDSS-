@@ -239,6 +239,100 @@ export const IntelligentDecisionView: React.FC<IntelligentDecisionViewProps> = (
         </div>
       )}
 
+    {/* Main Grid: Orders Table + Decision Explanation Inspector */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Orders Table (2 Cols) */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold text-slate-900">
+              {activeTab === 'scoring' ? 'Priority Ranked Consignments (Sorted by Score)' : activeTab === 'knn' ? 'k-NN Classified Orders' : 'Rule-Based Safety & Dispatch Manifest'}
+            </h2>
+            <span className="text-[11px] text-slate-500 font-mono">
+              Latency: {activeTab === 'scoring' ? `${scoringOutput.metrics.executionTimeMs}ms` : activeTab === 'knn' ? `${knnOutput.metrics.executionTimeMs}ms` : `${ruleOutput.metrics.executionTimeMs}ms`}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-700 border-b border-slate-200 font-semibold">
+                  <th className="py-2.5 px-3">Order ID & Customer</th>
+                  <th className="py-2.5 px-3">SLA / Value</th>
+                  <th className="py-2.5 px-3">Cargo Spec</th>
+                  <th className="py-2.5 px-3">
+                    {activeTab === 'scoring' ? 'Calculated Priority' : activeTab === 'knn' ? 'Predicted Category' : 'Compliance Directives'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {orders.map((order) => {
+                  const isSelected = activeSelectedOrder && activeSelectedOrder.id === order.id;
+                  const scored = scoringOutput.scores.find(s => s.orderId === order.id);
+                  const knn = knnOutput.classifications.find(k => k.orderId === order.id);
+                  const rule = ruleOutput.results.find(r => r.orderId === order.id);
+
+                  return (
+                    <tr
+                      key={order.id}
+                      onClick={() => setSelectedOrderId(order.id)}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected ? 'bg-amber-50/80 font-medium' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-slate-900">{order.customerName}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{order.id} • Tier {order.customerTier}</div>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono">
+                        <div className="text-slate-800">Rs. {order.itemValue.toLocaleString()}</div>
+                        <div className="text-[10px] text-slate-500">{order.deadlineHours} hrs SLA</div>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600">
+                        <div>{order.weightKg} kg • {order.volumeM3} m³</div>
+                        {order.isPerishable && (
+                          <span className="text-[10px] font-bold text-rose-600">Perishable Cargo</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        {activeTab === 'scoring' && scored && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-amber-700 font-mono text-xs">
+                              {scored.compositeScore.toFixed(1)}
+                            </span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
+                              scored.priorityRank <= 3 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              Rank #{scored.priorityRank}
+                            </span>
+                          </div>
+                        )}
+
+                        {activeTab === 'knn' && knn && (
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                            knn.predictedLabel === 'CRITICAL_EXPRESS' ? 'bg-rose-100 text-rose-700' :
+                            knn.predictedLabel === 'HIGH_PRIORITY' ? 'bg-amber-100 text-amber-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {knn.predictedLabel} ({knn.confidenceScore}%)
+                          </span>
+                        )}
+
+                        {activeTab === 'rules' && rule && (
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                            rule.triggeredRules.length > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                          }`}>
+                            {rule.triggeredRules.length > 0 ? `${rule.triggeredRules.length} Directive(s)` : 'Standard Dispatch'}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         </div>
       </div>
         );
