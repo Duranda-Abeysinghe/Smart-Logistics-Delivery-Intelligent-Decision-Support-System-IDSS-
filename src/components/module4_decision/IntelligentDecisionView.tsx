@@ -214,6 +214,31 @@ export const IntelligentDecisionView: React.FC<IntelligentDecisionViewProps> = (
         </div>
       )}
 
+            {/* Pattern Neighborhood Control (When Pattern Classifier Active) */}
+      {activeTab === 'knn' && (
+        <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+          <div className="flex items-center gap-4">
+            <span className="font-bold text-amber-900">k-NN Nearest Neighbors (k):</span>
+            <div className="flex items-center gap-2">
+              {[1, 3, 5, 7].map(val => (
+                <button
+                  key={val}
+                  onClick={() => setKValue(val)}
+                  className={`px-3 py-1 rounded font-bold transition-all ${
+                    kValue === val ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-slate-700 border border-amber-300'
+                  }`}
+                >
+                  k = {val}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="text-[11px] text-amber-800">
+            Euclidean feature vector matching on normalized deadline, value, weight, and customer tier.
+          </div>
+        </div>
+      )}
+
         </div>
       </div>
         );
