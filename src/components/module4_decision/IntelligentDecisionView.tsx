@@ -333,7 +333,131 @@ export const IntelligentDecisionView: React.FC<IntelligentDecisionViewProps> = (
           </div>
         </div>
 
+                {/* Explainable Decision Reasoner (1 Col) */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-amber-600" />
+              Explainable Decision Inspector
+            </h3>
+            {activeSelectedOrder && (
+              <span className="text-[11px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                {activeSelectedOrder.id}
+              </span>
+            )}
+          </div>
+
+          {activeSelectedOrder ? (
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1 text-xs">
+              <div className="font-bold text-slate-900">{activeSelectedOrder.customerName}</div>
+              <div className="text-slate-600 text-[11px]">
+                Pickup: Hub {activeSelectedOrder.pickupNodeId} ➔ Destination: Hub {activeSelectedOrder.destinationNodeId}
+              </div>
+              <div className="text-slate-600 text-[11px]">
+                Value: Rs. {activeSelectedOrder.itemValue.toLocaleString()} • Weight: {activeSelectedOrder.weightKg}kg • SLA: {activeSelectedOrder.deadlineHours}h
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-slate-400">Select an order to inspect.</div>
+          )}
+
+          {/* Explainability Breakdown according to Active Tab */}
+          {activeTab === 'scoring' && selectedScored && (
+            <div className="space-y-3">
+              <div className="text-xs font-bold text-slate-800">Priority Factor Attributions:</div>
+              <div className="space-y-2 text-xs">
+                {selectedScored.explanations.map((exp, idx) => (
+                  <div key={idx}>
+                    <div className="flex justify-between text-[11px] text-slate-600 mb-0.5">
+                      <span>{exp.factor}</span>
+                      <span className="font-mono font-bold text-slate-800">+{exp.weightedContribution}</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, exp.rawScore)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-amber-50/80 p-3 rounded-lg border border-amber-200 text-xs text-amber-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5" /> Final Priority Score: {selectedScored.compositeScore.toFixed(1)} / 100
+                </div>
+                <p className="text-[11px] text-amber-800">
+                  Assigned <strong>Rank #{selectedScored.priorityRank}</strong> in dispatch queue ({selectedScored.urgencyClass}).
+                </p>
+                <div className="text-[11px] font-semibold mt-1">
+                  Recommended: {selectedScored.recommendedVehicleType} • Slot: {selectedScored.recommendedTimeSlot}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'knn' && selectedKnn && (
+            <div className="space-y-3">
+              <div className="text-xs font-bold text-slate-800">Feature Vector & Nearest Neighbors:</div>
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Assigned Category:</span>
+                  <span className="font-bold text-amber-700">{selectedKnn.predictedLabel}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Classification Confidence:</span>
+                  <span className="font-bold text-emerald-700">{selectedKnn.confidenceScore}%</span>
+                </div>
+                <div className="text-[10px] text-slate-500 font-mono">
+                  Normalized Feature Vector: [{selectedKnn.featureVector.join(', ')}]
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-500 font-semibold">k={kValue} Nearest Historic Delivery Profiles:</div>
+              <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                {selectedKnn.nearestNeighbors.map((nb, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs bg-slate-50 p-1.5 rounded border border-slate-100">
+                    <span className="font-mono text-slate-700">{nb.customerName}</span>
+                    <span className="text-[11px] text-slate-500">{nb.label}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">dist: {nb.distance.toFixed(3)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'rules' && selectedRule && (
+            <div className="space-y-3">
+              <div className="text-xs font-bold text-slate-800">Inference Directives & Actions:</div>
+              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs">
+                <div className="font-bold text-slate-900 mb-1">Dispatch Decision: {selectedRule.finalDispatchDecision}</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">{selectedRule.justificationSummary}</p>
+              </div>
+
+              {selectedRule.mandatoryEquipment.length > 0 && (
+                <div>
+                  <span className="text-[11px] font-bold text-slate-700 block mb-1">Mandatory Equipment:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedRule.mandatoryEquipment.map((eq, i) => (
+                      <span key={i} className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-medium">
+                        {eq}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedRule.handlingInstructions.length > 0 && (
+                <div>
+                  <span className="text-[11px] font-bold text-slate-700 block mb-1">Handling Protocols:</span>
+                  <ul className="text-[11px] text-slate-600 list-disc list-inside space-y-0.5">
+                    {selectedRule.handlingInstructions.map((inst, i) => (
+                      <li key={i}>{inst}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+       </div>
       </div>
         );
      };
