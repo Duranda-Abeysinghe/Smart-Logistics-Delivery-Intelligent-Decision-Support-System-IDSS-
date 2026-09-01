@@ -52,10 +52,10 @@ namespace SmartLogistics.IDSS.Services
                 }
             }
 
-            // 1. Degree Centrality
+            //  Degree Centrality
             var degrees = nodes.ToDictionary(k => k.LocationId, v => adj[v.LocationId].Count);
 
-            // 2. Brandes' Betweenness Centrality & Closeness Centrality
+            //  Brandes' Betweenness Centrality & Closeness Centrality
             var betweenness = nodes.ToDictionary(k => k.LocationId, v => 0.0);
             var closeness = nodes.ToDictionary(k => k.LocationId, v => 0.0);
 
