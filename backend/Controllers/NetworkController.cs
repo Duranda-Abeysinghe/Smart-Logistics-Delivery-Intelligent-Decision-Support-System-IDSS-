@@ -6,7 +6,7 @@ using SmartLogistics.IDSS.Services;
 
 namespace SmartLogistics.IDSS.Controllers
 {
-    // ISSUE 3: Network Topology & Centrality Controller
+    //  Network Topology & Centrality Controller
 
     [ApiController]
     [Route("api/[controller]")]
