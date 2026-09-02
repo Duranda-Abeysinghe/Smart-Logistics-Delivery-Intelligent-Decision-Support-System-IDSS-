@@ -117,7 +117,7 @@ export const IntelligentDecisionView: React.FC<IntelligentDecisionViewProps> = (
         </div>
       </div>
 
-          {/* Control Sliders (When Multi-Criteria Priority Scoring Active) */}
+      {/* Control Sliders (When Multi-Criteria Priority Scoring Active) */}
       {activeTab === 'scoring' && (
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
@@ -214,7 +214,7 @@ export const IntelligentDecisionView: React.FC<IntelligentDecisionViewProps> = (
         </div>
       )}
 
-            {/* Pattern Neighborhood Control (When Pattern Classifier Active) */}
+      {/* Pattern Neighborhood Control (When Pattern Classifier Active) */}
       {activeTab === 'knn' && (
         <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
           <div className="flex items-center gap-4">
@@ -239,7 +239,7 @@ export const IntelligentDecisionView: React.FC<IntelligentDecisionViewProps> = (
         </div>
       )}
 
-    {/* Main Grid: Orders Table + Decision Explanation Inspector */}
+      {/* Main Grid: Orders Table + Decision Explanation Inspector */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Orders Table (2 Cols) */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
@@ -333,7 +333,7 @@ export const IntelligentDecisionView: React.FC<IntelligentDecisionViewProps> = (
           </div>
         </div>
 
-                {/* Explainable Decision Reasoner (1 Col) */}
+        {/* Explainable Decision Reasoner (1 Col) */}
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
@@ -457,7 +457,7 @@ export const IntelligentDecisionView: React.FC<IntelligentDecisionViewProps> = (
             </div>
           )}
         </div>
-       </div>
       </div>
-        );
-     };
+    </div>
+  );
+};
