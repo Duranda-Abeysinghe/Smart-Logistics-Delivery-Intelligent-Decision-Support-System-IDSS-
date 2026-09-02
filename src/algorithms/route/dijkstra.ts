@@ -52,6 +52,50 @@ export function runDijkstra(
   distances.set(startNodeId, 0);
   pq.push(startNodeId, 0);
 
+  // Main Dijkstra loop: repeatedly expand the closest unvisited node
+  while (!pq.isEmpty()) {
+    const current = pq.pop();
+    if (!current) break;
+
+    // Skip stale queue entries for nodes already finalized
+    // (can happen since we push duplicates instead of decrease-key)
+    if (visitedSet.has(current)) continue;
+    visitedSet.add(current);
+    visitedSequence.push(current);
+
+    // Early exit once we've reached the target - distance is guaranteed optimal here
+    if (current === targetNodeId) break;
+
+    const currentDist = distances.get(current)!;
+    const neighbors = graph.getNeighbors(current);
+
+    for (const edge of neighbors) {
+      // Skip edges that are marked as blocked (e.g. road closures)
+      if (edge.isBlocked) continue;
+
+      // Choose edge weight based on which criterion we're optimizing for
+      let weight = edge.distance;
+      if (optimizeCriterion === 'time') {
+        weight = edge.travelTime * (edge.trafficMultiplier || 1);
+      } else if (optimizeCriterion === 'cost') {
+        weight = edge.cost * (edge.trafficMultiplier || 1);
+      }
+
+      // Relaxation step: only update if this path to the neighbor is shorter than any known so far
+      const newDist = currentDist + weight;
+      if (newDist < (distances.get(edge.target) ?? Infinity)) {
+        distances.set(edge.target, newDist);
+        previous.set(edge.target, current);
+        edgeUsed.set(edge.target, {
+          distance: edge.distance,
+          cost: edge.cost,
+          travelTime: edge.travelTime
+        });
+        // Push the updated node back into the queue with its new priority
+        pq.push(edge.target, newDist);
+      }
+    }
+  }
 
   const endTime = performance.now();
   const executionTimeMs = endTime - startTime;
