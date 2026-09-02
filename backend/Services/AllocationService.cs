@@ -40,13 +40,17 @@ namespace SmartLogistics.IDSS.Services
             List<Driver> drivers, 
             string strategy)
         {
+            // Measure how long the allocation algorithm takes to execute.
             var sw = Stopwatch.StartNew();
 
+            // Filter resources so only currently available vehicles, drivers and pending orders are used.
             var availableVehicles = vehicles.Where(v => v.Status == "available").ToList();
             var availableDrivers = drivers.Where(d => d.Status == "available").OrderByDescending(d => d.Rating).ToList();
             var pendingOrders = orders.Where(o => o.Status == "pending").ToList();
 
             var assignments = new List<VehicleAssignment>();
+
+            // Tracks which available driver should be assigned next.
             int driverIdx = 0;
 
             if (strategy.ToLowerInvariant() == "knapsack")
@@ -60,9 +64,12 @@ namespace SmartLogistics.IDSS.Services
 
                     int cap = (int)vehicle.CapacityKg;
                     int n = remainingOrders.Count;
+
+                    // Weight capacity is scaled down to reduce the size of the DP table.
                     int scale = 20; // scale step for DP table
                     int W = cap / scale;
 
+                    // DP table stores the maximum order value achievable for each capacity.
                     double[,] dp = new double[n + 1, W + 1];
 
                     for (int i = 1; i <= n; i++)
@@ -83,6 +90,8 @@ namespace SmartLogistics.IDSS.Services
                     // Backtrack
                     var chosen = new List<Order>();
                     int currW = W;
+
+                    // Backtracking identifies which orders were included in the optimal solution.
                     for (int i = n; i > 0; i--)
                     {
                         if (dp[i, currW] != dp[i - 1, currW])
@@ -109,6 +118,7 @@ namespace SmartLogistics.IDSS.Services
                     };
                     assignments.Add(assignment);
 
+                    // Remove allocated orders so they cannot be assigned to another vehicle.
                     foreach (var c in chosen) remainingOrders.Remove(c);
                 }
             }
@@ -129,6 +139,8 @@ namespace SmartLogistics.IDSS.Services
                     for (int i = sortedOrders.Count - 1; i >= 0; i--)
                     {
                         var ord = sortedOrders[i];
+
+                        // Assign the order only if both weight and volume limits remain valid.
                         if (currentWt + (double)ord.WeightKg <= (double)vehicle.CapacityKg &&
                             currentVol + (double)ord.VolumeM3 <= (double)vehicle.VolumeM3)
                         {
@@ -158,6 +170,7 @@ namespace SmartLogistics.IDSS.Services
             sw.Stop();
             long microseconds = (long)(sw.Elapsed.TotalMilliseconds * 1000);
 
+            // Calculate the average capacity usage across all assigned vehicles.
             double overallUtil = assignments.Count > 0 ? assignments.Average(a => a.CapacityUtilizationPct) : 0;
 
             return new AllocationResponse
