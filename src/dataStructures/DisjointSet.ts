@@ -13,7 +13,7 @@ export class DisjointSet<T = string> {
       elements.forEach(elem => this.makeSet(elem));
     }
   }
-
+// Create a new set
   public makeSet(elem: T): void {
     if (!this.parent.has(elem)) {
       this.parent.set(elem, elem);
@@ -21,7 +21,7 @@ export class DisjointSet<T = string> {
       this.numComponents++;
     }
   }
-
+// Find the root
   public find(elem: T): T {
     if (!this.parent.has(elem)) {
       this.makeSet(elem);

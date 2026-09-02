@@ -1,15 +1,23 @@
 import { DeliveryOrder, AlgorithmMetrics } from '../../types';
 
+/**
+ * Defines a single logistics business rule.
+ * The predicate checks whether the rule applies to a particular delivery order.
+ */
 export interface BusinessRule {
   id: string;
   name: string;
   category: 'Safety' | 'SLA' | 'Equipment' | 'Environmental';
-  priorityLevel: number; // 1 (Highest) to 5
+  priorityLevel: number; // 1 is the highest priority and 5 is the lowest
   conditionDescription: string;
   actionDescription: string;
   predicate: (order: DeliveryOrder) => boolean;
 }
 
+/**
+ * Contains the explainable outcome produced after evaluating one order.
+ * It records the triggered rules, required equipment and final dispatch decision.
+ */
 export interface RuleEvaluationResult {
   orderId: string;
   customerName: string;
@@ -20,6 +28,10 @@ export interface RuleEvaluationResult {
   justificationSummary: string;
 }
 
+/**
+ * Central collection of operational rules used by the expert system.
+ * These rules cover safety, service-level agreements, equipment and sustainability.
+ */
 export const LOGISTICS_RULESET: BusinessRule[] = [
   {
     id: 'R1-COLDCHAIN',
@@ -27,8 +39,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Safety',
     priorityLevel: 1,
     conditionDescription: 'isPerishable == true AND deadlineHours <= 4',
-    actionDescription:
-      'Mandate temperature-controlled insulated container + immediate dispatch routing',
+    actionDescription: 'Mandate temperature-controlled insulated container + immediate dispatch routing',
     predicate: (o) => o.isPerishable && o.deadlineHours <= 4
   },
   {
@@ -37,8 +48,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'SLA',
     priorityLevel: 1,
     conditionDescription: 'customerTier == "Platinum"',
-    actionDescription:
-      'Lock top priority time slot with dedicated courier tracking notifications',
+    actionDescription: 'Lock top priority time slot with dedicated courier tracking notifications',
     predicate: (o) => o.customerTier === 'Platinum'
   },
   {
@@ -47,8 +57,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Equipment',
     priorityLevel: 2,
     conditionDescription: 'weightKg > 1500',
-    actionDescription:
-      'Assign Class-B Heavy Truck with hydraulic lift-gate and dual handling crew',
+    actionDescription: 'Assign Class-B Heavy Truck with hydraulic lift-gate and dual handling crew',
     predicate: (o) => o.weightKg > 1500
   },
   {
@@ -57,8 +66,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Safety',
     priorityLevel: 2,
     conditionDescription: 'itemValue >= 10000',
-    actionDescription:
-      'Direct-point-to-point transit without secondary hub cross-docking; driver rating >= 4.8',
+    actionDescription: 'Direct-point-to-point transit without secondary hub cross-docking; driver rating >= 4.8',
     predicate: (o) => o.itemValue >= 10000
   },
   {
@@ -67,8 +75,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Environmental',
     priorityLevel: 3,
     conditionDescription: 'weightKg <= 100 AND volumeM3 <= 1.0',
-    actionDescription:
-      'Route via Electric Cargo Bike to reduce urban carbon footprint by 85%',
+    actionDescription: 'Route via Electric Cargo Bike to reduce urban carbon footprint by 85%',
     predicate: (o) => o.weightKg <= 100 && o.volumeM3 <= 1.0
   },
   {
@@ -77,15 +84,17 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Safety',
     priorityLevel: 2,
     conditionDescription: 'fragility == "High"',
-    actionDescription:
-      'Top-tier floor placement; shock-absorbing restraint netting required',
+    actionDescription: 'Top-tier floor placement; shock-absorbing restraint netting required',
     predicate: (o) => o.fragility === 'High'
   }
 ];
 
 /**
- * Rule-Based Expert System for Logistics Decision Inference
- * Time Complexity: O(N * R) where N = orders, R = active rules
+ * Evaluates every delivery order against the active logistics rules.
+ * Triggered rules are ordered by priority and converted into equipment,
+ * handling and dispatch recommendations that can be explained to the user.
+ *
+ * Time Complexity: O(N * R) where N = orders and R = active rules
  * Space Complexity: O(N * R)
  */
 export function runRuleBasedExpertSystem(
@@ -95,9 +104,13 @@ export function runRuleBasedExpertSystem(
   const startTime = performance.now();
 
   const results: RuleEvaluationResult[] = orders.map(order => {
+    // Retain only the rules whose predicate conditions match the current order.
     const triggered = rules.filter(r => r.predicate(order));
+
+    // Lower priority numbers represent more important operational rules.
     triggered.sort((a, b) => a.priorityLevel - b.priorityLevel);
 
+    // These collections are populated according to the triggered safety and equipment rules.
     const mandatoryEquipment: string[] = [];
     const handlingInstructions: string[] = [];
 
@@ -128,20 +141,19 @@ export function runRuleBasedExpertSystem(
       }
     }
 
+    // Cold-chain and Platinum SLA rules take precedence over heavy-freight
+    // consolidation and the normal scheduled-delivery process.
     const finalDispatchDecision =
-      triggered.some(
-        r => r.id === 'R1-COLDCHAIN' || r.id === 'R2-PLATINUM-SLA'
-      )
+      triggered.some(r => r.id === 'R1-COLDCHAIN' || r.id === 'R2-PLATINUM-SLA')
         ? 'EXPEDITED DIRECT DISPATCH'
         : triggered.some(r => r.id === 'R3-HEAVY-CARGO')
-          ? 'HEAVY FREIGHT CONSOLIDATION'
-          : 'STANDARD SCHEDULED TRANSIT';
+        ? 'HEAVY FREIGHT CONSOLIDATION'
+        : 'STANDARD SCHEDULED TRANSIT';
 
+    // Produce a readable explanation identifying the rules behind the decision.
     const justificationSummary =
       triggered.length > 0
-        ? `Order triggered ${triggered.length} operational rules (${triggered
-            .map(r => r.id)
-            .join(', ')}) enforcing specialized SLA and safety compliance.`
+        ? `Order triggered ${triggered.length} operational rules (${triggered.map(r => r.id).join(', ')}) enforcing specialized SLA and safety compliance.`
         : 'Standard operating procedure applied with default SLA window.';
 
     return {
@@ -149,6 +161,8 @@ export function runRuleBasedExpertSystem(
       customerName: order.customerName,
       triggeredRules: triggered,
       finalDispatchDecision,
+
+      // Sets remove repeated equipment or instructions when several rules overlap.
       mandatoryEquipment: Array.from(new Set(mandatoryEquipment)),
       handlingInstructions: Array.from(new Set(handlingInstructions)),
       justificationSummary
@@ -158,6 +172,7 @@ export function runRuleBasedExpertSystem(
   const endTime = performance.now();
   const executionTimeMs = endTime - startTime;
 
+  // Return the decisions together with measurements used for performance analysis.
   return {
     results,
     metrics: {
