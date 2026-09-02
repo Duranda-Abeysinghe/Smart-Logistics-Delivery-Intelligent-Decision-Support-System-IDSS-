@@ -8,18 +8,20 @@ namespace SmartLogistics.IDSS.Services
         RouteOptimizationResponse CalculateRoute(RouteOptimizationRequest request, List<Location> nodes, List<RouteSegment> edges);
     }
 
+    // Input parameters describing a route optimization request
     public class RouteOptimizationRequest
     {
-        public string SourceNodeId { get; set; } = string.Empty;
-        public string TargetNodeId { get; set; } = string.Empty;
+        public string SourceNodeId { get; set; } = string.Empty; // Starting location ID
+        public string TargetNodeId { get; set; } = string.Empty; // Destination location ID
         public string Criterion { get; set; } = "distance"; // distance, time, cost
         public string Algorithm { get; set; } = "dijkstra"; // dijkstra, astar, bellman, floyd
-        public double TrafficMultiplier { get; set; } = 1.0;
+        public double TrafficMultiplier { get; set; } = 1.0; // Global traffic multiplier applied on top of per-edge multipliers
     }
 
+    // Result of a route optimization calculation, including totals and performance metrics
     public class RouteOptimizationResponse
     {
-        public List<string> Path { get; set; } = new();
+        public List<string> Path { get; set; } = new(); // Ordered list of node IDs forming the route
         public double TotalDistance { get; set; }
         public double TotalTime { get; set; }
         public double TotalCost { get; set; }
@@ -38,9 +40,10 @@ namespace SmartLogistics.IDSS.Services
             List<Location> nodes, 
             List<RouteSegment> edges)
         {
-            var sw = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew(); // Start timing the calculation
 
             // Build Adjacency List Graph
+            // Each entry maps a node ID to a list of outgoing edges: (target, weight-for-optimization, raw distance, time, cost)
             var adj = new Dictionary<string, List<(string Target, double Weight, double Distance, double Time, double Cost)>>();
             foreach (var n in nodes)
             {
@@ -49,8 +52,9 @@ namespace SmartLogistics.IDSS.Services
 
             foreach (var e in edges)
             {
-                if (e.IsBlocked) continue;
+                if (e.IsBlocked) continue; // Skip unusable/blocked segments
 
+                // Choose edge weight based on the requested optimization criterion
                 double weight = request.Criterion switch
                 {
                     "time" => e.TravelTimeMinutes * (double)e.TrafficMultiplier * request.TrafficMultiplier,
@@ -58,6 +62,7 @@ namespace SmartLogistics.IDSS.Services
                     _ => (double)e.DistanceKm * (double)e.TrafficMultiplier
                 };
 
+                // Graph is treated as undirected: add the edge in both directions
                 if (adj.ContainsKey(e.SourceLocationId) && adj.ContainsKey(e.DestinationLocationId))
                 {
                     adj[e.SourceLocationId].Add((e.DestinationLocationId, weight, (double)e.DistanceKm, e.TravelTimeMinutes, (double)e.TravelCostLkr));
@@ -67,10 +72,11 @@ namespace SmartLogistics.IDSS.Services
 
             // Execute Selected Algorithm
             var path = new List<string>();
-            var distances = new Dictionary<string, double>();
-            var predecessors = new Dictionary<string, string?>();
-            int visitedCount = 0;
+            var distances = new Dictionary<string, double>(); // Shortest known distance from source to each node
+            var predecessors = new Dictionary<string, string?>(); // Predecessor map for path reconstruction
+            int visitedCount = 0; // Number of nodes dequeued/processed
 
+            // Initialize all nodes with infinite distance and no predecessor
             foreach (var n in nodes)
             {
                 distances[n.LocationId] = double.PositiveInfinity;
@@ -79,7 +85,7 @@ namespace SmartLogistics.IDSS.Services
 
             if (distances.ContainsKey(request.SourceNodeId))
             {
-                distances[request.SourceNodeId] = 0;
+                distances[request.SourceNodeId] = 0; // Distance from source to itself is 0
             }
 
             // Min-Heap Priority Queue for Dijkstra / A*
@@ -89,12 +95,13 @@ namespace SmartLogistics.IDSS.Services
                 pq.Enqueue(request.SourceNodeId, 0);
             }
 
+            // Main loop: repeatedly extract the closest node and relax its outgoing edges
             while (pq.Count > 0)
             {
                 var u = pq.Dequeue();
                 visitedCount++;
 
-                if (u == request.TargetNodeId) break;
+                if (u == request.TargetNodeId) break; // Early exit once target is reached
 
                 if (!adj.ContainsKey(u)) continue;
 
@@ -105,6 +112,7 @@ namespace SmartLogistics.IDSS.Services
 
                     if (alt < distances[v])
                     {
+                        // Found a shorter path to v via u
                         distances[v] = alt;
                         predecessors[v] = u;
                         pq.Enqueue(v, alt);
@@ -112,7 +120,7 @@ namespace SmartLogistics.IDSS.Services
                 }
             }
 
-            // Reconstruct path
+            // Reconstruct path by walking backwards from target to source using predecessors
             var curr = request.TargetNodeId;
             while (curr != null)
             {
@@ -120,12 +128,13 @@ namespace SmartLogistics.IDSS.Services
                 curr = predecessors.GetValueOrDefault(curr);
             }
 
+            // If the reconstructed path doesn't actually start at the source, no valid route was found
             if (path.Count == 0 || path[0] != request.SourceNodeId)
             {
                 path.Clear();
             }
 
-            // Calculate totals
+            // Calculate totals by walking along the final path and summing up edge attributes
             double totalDist = 0, totalTime = 0, totalCost = 0;
             for (int i = 0; i < path.Count - 1; i++)
             {
@@ -137,7 +146,7 @@ namespace SmartLogistics.IDSS.Services
                 totalCost += edge.Cost;
             }
 
-            sw.Stop();
+            sw.Stop(); // Stop timing
             long microseconds = (long)(sw.Elapsed.TotalMilliseconds * 1000);
 
             return new RouteOptimizationResponse
