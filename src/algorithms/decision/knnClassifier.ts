@@ -1,5 +1,9 @@
 import { DeliveryOrder, AlgorithmMetrics } from '../../types';
 
+/**
+ * Represents one historical delivery selected as a nearest neighbour.
+ * The distance indicates how similar it is to the order being classified.
+ */
 export interface KNNNeighbor {
   orderId: string;
   customerName: string;
@@ -7,6 +11,10 @@ export interface KNNNeighbor {
   label: 'CRITICAL_EXPRESS' | 'HIGH_PRIORITY' | 'STANDARD' | 'LOW_FLEXIBLE';
 }
 
+/**
+ * Explainable classification result for one order.
+ * The feature vector and nearest neighbours show why the label was assigned.
+ */
 export interface KNNClassificationResult {
   orderId: string;
   customerName: string;
@@ -17,7 +25,9 @@ export interface KNNClassificationResult {
 }
 
 /**
- * Historical labeled training samples representing logistics operational baselines
+ * Fixed labelled reference data used by the classifier.
+ * Feature order: [deadline ratio, value ratio, weight ratio, customer-tier code].
+ * A smaller Euclidean distance represents more similar delivery conditions.
  */
 const HISTORICAL_SAMPLES = [
   { features: [0.1, 0.95, 0.05, 1.0], label: 'CRITICAL_EXPRESS' as const, name: 'Emergency Pharma Delivery #H1' },
@@ -34,8 +44,11 @@ const HISTORICAL_SAMPLES = [
 ];
 
 /**
- * k-Nearest Neighbors (k-NN) Classification for Order Urgency
- * Time Complexity: O(N * M * D) where N = query orders, M = historical instances, D = dimensions
+ * Classifies delivery urgency using the k-nearest neighbours method.
+ * Each order is normalized, compared with historical samples, and assigned
+ * the urgency label receiving the most votes from its k closest neighbours.
+ *
+ * Time Complexity: O(N * M * D)
  * Space Complexity: O(M)
  */
 export function runKNNClassification(
@@ -45,8 +58,8 @@ export function runKNNClassification(
   const startTime = performance.now();
 
   const classifications: KNNClassificationResult[] = orders.map(order => {
-    // Construct normalized feature vector
-    // [normDeadline (0-1), normValue (0-1), normWeight (0-1), tierCode (0.35 - 1.0)]
+    // Convert hours, value, weight and customer tier into comparable values.
+    // Normalization prevents features with larger numeric units from dominating.
     const normDeadline = Math.min(1, Math.max(0, order.deadlineHours / 12));
     const normValue = Math.min(1, Math.max(0, order.itemValue / 30000));
     const normWeight = Math.min(1, Math.max(0, order.weightKg / 3000));
@@ -54,14 +67,17 @@ export function runKNNClassification(
 
     const queryFeatures = [normDeadline, normValue, normWeight, tierCode];
 
-    // Compute Euclidean distances to all training instances
+    // Measure similarity against every historical sample using Euclidean distance.
     const distances: KNNNeighbor[] = HISTORICAL_SAMPLES.map((sample, idx) => {
       let sumSq = 0;
+
       for (let d = 0; d < 4; d++) {
         const diff = queryFeatures[d] - sample.features[d];
         sumSq += diff * diff;
       }
+
       const dist = Math.sqrt(sumSq);
+
       return {
         orderId: `HIST-${idx + 1}`,
         customerName: sample.name,
@@ -70,11 +86,13 @@ export function runKNNClassification(
       };
     });
 
+    // Sort from most similar to least similar and retain the k closest samples.
     distances.sort((a, b) => a.distance - b.distance);
     const topK = distances.slice(0, k);
 
-    // Vote tally
+    // Apply majority voting across the selected nearest neighbours.
     const voteCounts: Record<string, number> = {};
+
     for (const neighbor of topK) {
       voteCounts[neighbor.label] = (voteCounts[neighbor.label] || 0) + 1;
     }
@@ -89,6 +107,7 @@ export function runKNNClassification(
       }
     }
 
+    // Confidence is the percentage of neighbours supporting the winning label.
     const confidence = Math.round((maxVotes / k) * 100);
 
     return {
