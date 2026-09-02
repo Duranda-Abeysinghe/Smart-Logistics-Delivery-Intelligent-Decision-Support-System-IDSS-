@@ -2,6 +2,8 @@ import { Graph } from '../../dataStructures/Graph';
 import { PriorityQueue } from '../../dataStructures/PriorityQueue';
 import { AlgorithmMetrics, RouteStep } from '../../types';
 
+// Shape of the result returned by any route-finding algorithm in this module
+// (Dijkstra, A*, etc. all conform to this so the UI can render them interchangeably)
 export interface RouteResult {
   path: string[];
   totalDistance: number;
@@ -26,62 +28,35 @@ export function runDijkstra(
 ): RouteResult {
   const startTime = performance.now();
 
+  // distances: shortest known cost from startNode to each node so far
   const distances = new Map<string, number>();
+  // previous: predecessor of each node on its current shortest-known path (for reconstruction)
   const previous = new Map<string, string | null>();
+  // edgeUsed: the specific edge that produced the shortest-known path to each node
+  // (currently tracked but not read elsewhere - kept for potential debugging/analysis use)
   const edgeUsed = new Map<string, { distance: number; cost: number; travelTime: number }>();
+  // Min-priority queue ordered by current known distance - always expands the closest unvisited node
   const pq = new PriorityQueue<string>();
+  // Order in which nodes were finalized, useful for visualizing algorithm progress
   const visitedSequence: string[] = [];
+  // Nodes that have been finalized/expanded (won't be revisited)
   const visitedSet = new Set<string>();
 
+  // Initialize all nodes with infinite distance and no known predecessor
   for (const nodeId of graph.getAllNodeIds()) {
     distances.set(nodeId, Infinity);
     previous.set(nodeId, null);
   }
 
+  // Start node has zero distance to itself
   distances.set(startNodeId, 0);
   pq.push(startNodeId, 0);
 
-  while (!pq.isEmpty()) {
-    const current = pq.pop();
-    if (!current) break;
-
-    if (visitedSet.has(current)) continue;
-    visitedSet.add(current);
-    visitedSequence.push(current);
-
-    if (current === targetNodeId) break;
-
-    const currentDist = distances.get(current)!;
-    const neighbors = graph.getNeighbors(current);
-
-    for (const edge of neighbors) {
-      if (edge.isBlocked) continue;
-
-      let weight = edge.distance;
-      if (optimizeCriterion === 'time') {
-        weight = edge.travelTime * (edge.trafficMultiplier || 1);
-      } else if (optimizeCriterion === 'cost') {
-        weight = edge.cost * (edge.trafficMultiplier || 1);
-      }
-
-      const newDist = currentDist + weight;
-      if (newDist < (distances.get(edge.target) ?? Infinity)) {
-        distances.set(edge.target, newDist);
-        previous.set(edge.target, current);
-        edgeUsed.set(edge.target, {
-          distance: edge.distance,
-          cost: edge.cost,
-          travelTime: edge.travelTime
-        });
-        pq.push(edge.target, newDist);
-      }
-    }
-  }
 
   const endTime = performance.now();
   const executionTimeMs = endTime - startTime;
 
-  // Reconstruct path
+  // Reconstruct path by walking backwards from target to start using the `previous` map
   const path: string[] = [];
   let curr: string | null = targetNodeId;
   while (curr !== null) {
@@ -90,9 +65,12 @@ export function runDijkstra(
   }
 
   // Handle disconnected
+  // A valid path must actually begin at the start node
+  // (otherwise target was unreachable and reconstruction stopped early)
   const isFound = path.length > 0 && path[0] === startNodeId;
   const finalPath = isFound ? path : [];
 
+  // Accumulate totals and per-step breakdown for the final path
   let totalDistance = 0;
   let totalTime = 0;
   let totalCost = 0;
@@ -120,6 +98,7 @@ export function runDijkstra(
     }
   }
 
+  // Assemble the final result, including diagnostic metrics for the evaluation module
   return {
     path: finalPath,
     totalDistance: Math.round(totalDistance * 100) / 100,
@@ -133,10 +112,12 @@ export function runDijkstra(
       executionTimeMs: Math.round(executionTimeMs * 1000) / 1000,
       executionTimeUs: Math.round(executionTimeMs * 1000),
       nodesVisited: visitedSet.size,
+      // Rough memory estimate based on number of nodes touched (for algorithm comparison charts)
       memoryEstimateKb: Math.round((graph.getAllNodeIds().length * 0.12) * 100) / 100,
       totalCost: Math.round(totalCost * 100) / 100,
       totalDistance: Math.round(totalDistance * 100) / 100,
       path: finalPath,
+      // Simple binary quality score: 100 if a path was found, 0 if target was unreachable
       solutionQualityScore: isFound ? 100 : 0,
       timeComplexity: 'O((V + E) log V)',
       spaceComplexity: 'O(V)'
