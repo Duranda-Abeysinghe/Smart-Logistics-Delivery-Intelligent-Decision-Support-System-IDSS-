@@ -27,23 +27,30 @@ export const ResourceAllocationView: React.FC<ResourceAllocationViewProps> = ({
   vehicles,
   drivers
 }) => {
+  // Tracks which allocation algorithm is currently selected in the UI.
   const [selectedStrategy, setSelectedStrategy] = useState<'greedy' | 'knapsack' | 'genetic'>('knapsack');
+  // Stores the number of optimization cycles used by the genetic algorithm.
   const [optCycles, setOptCycles] = useState<number>(30);
+  // Controls the candidate sample pool size for genetic allocation.
   const [sampleSize, setSampleSize] = useState<number>(40);
 
   // Compute results
+  // Memoize greedy allocation so it only recalculates when fleet inputs change.
   const greedyResult = useMemo(() => {
     return runGreedyAllocation(orders, vehicles, drivers);
   }, [orders, vehicles, drivers]);
 
+  // Compute the dynamic-programming allocation for maximum cargo value.
   const knapsackResult = useMemo<KnapsackDPResult>(() => {
     return runKnapsackDP(orders, vehicles, drivers);
   }, [orders, vehicles, drivers]);
 
+  // Run the genetic allocator using the current tuning parameters.
   const geneticResult = useMemo<GeneticAllocationResult>(() => {
     return runGeneticAllocation(orders, vehicles, drivers, sampleSize, optCycles);
   }, [orders, vehicles, drivers, sampleSize, optCycles]);
 
+  // Select the result set that should currently be rendered.
   const activeResult = useMemo(() => {
     if (selectedStrategy === 'greedy') return greedyResult;
     if (selectedStrategy === 'genetic') return geneticResult;
@@ -186,6 +193,7 @@ export const ResourceAllocationView: React.FC<ResourceAllocationViewProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {activeResult.assignments.map((assignment, idx) => {
+            // Flag highly utilized vehicles for alternate visual styling.
             const isFull = assignment.capacityUtilizationPct > 90;
             return (
               <div
@@ -244,7 +252,8 @@ export const ResourceAllocationView: React.FC<ResourceAllocationViewProps> = ({
                   </div>
 
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                    {assignment.orders.length > 0 ? (
+                    {/* Render assigned consignments, or an empty-state message when none exist. */
+                      assignment.orders.length > 0 ? (
                       assignment.orders.map((o) => (
                         <div
                           key={o.id}
@@ -305,7 +314,8 @@ export const ResourceAllocationView: React.FC<ResourceAllocationViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-mono">
-                {knapsackResult.dpTablePreview.matrix.map((row, rIdx) => (
+                {/* Render each row of the DP preview matrix for the selected consignments. */
+                knapsackResult.dpTablePreview.matrix.map((row, rIdx) => (
                   <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
                     <td className="py-2 px-3 text-left font-sans font-semibold text-slate-800 whitespace-nowrap">
                       {knapsackResult.dpTablePreview.itemLabels[rIdx]}
