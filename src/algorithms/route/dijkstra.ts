@@ -2,17 +2,15 @@ import { Graph } from '../../dataStructures/Graph';
 import { PriorityQueue } from '../../dataStructures/PriorityQueue';
 import { AlgorithmMetrics, RouteStep } from '../../types';
 
-// Shape of the result returned by any route-finding algorithm in this module
-// (Dijkstra, A*, etc. all conform to this so the UI can render them interchangeably)
 export interface RouteResult {
-  path: string[];
-  totalDistance: number;
-  totalTime: number;
-  totalCost: number;
-  steps: RouteStep[];
-  visitedNodesCount: number;
-  visitedSequence: string[];
-  metrics: AlgorithmMetrics;
+  path: string[]; // Ordered list of node IDs forming the final route
+  totalDistance: number; // Sum of edge distances along the path
+  totalTime: number; // Sum of travel times along the path
+  totalCost: number; // Sum of edge costs along the path
+  steps: RouteStep[]; // Step-by-step breakdown of the route
+  visitedNodesCount: number; // Number of nodes visited during the search
+  visitedSequence: string[]; // Order in which nodes were visited
+  metrics: AlgorithmMetrics; // Performance and complexity metrics for this run
 }
 
 /**
@@ -26,54 +24,44 @@ export function runDijkstra(
   targetNodeId: string,
   optimizeCriterion: 'distance' | 'time' | 'cost' = 'distance'
 ): RouteResult {
-  const startTime = performance.now();
+  const startTime = performance.now(); // Record start time for performance measurement
 
-  // distances: shortest known cost from startNode to each node so far
-  const distances = new Map<string, number>();
-  // previous: predecessor of each node on its current shortest-known path (for reconstruction)
-  const previous = new Map<string, string | null>();
-  // edgeUsed: the specific edge that produced the shortest-known path to each node
-  // (currently tracked but not read elsewhere - kept for potential debugging/analysis use)
-  const edgeUsed = new Map<string, { distance: number; cost: number; travelTime: number }>();
-  // Min-priority queue ordered by current known distance - always expands the closest unvisited node
-  const pq = new PriorityQueue<string>();
-  // Order in which nodes were finalized, useful for visualizing algorithm progress
-  const visitedSequence: string[] = [];
-  // Nodes that have been finalized/expanded (won't be revisited)
-  const visitedSet = new Set<string>();
+  const distances = new Map<string, number>(); // Shortest known distance from start to each node
+  const previous = new Map<string, string | null>(); // Predecessor map for path reconstruction
+  const edgeUsed = new Map<string, { distance: number; cost: number; travelTime: number }>(); // Tracks which edge was used to reach each node
+  const pq = new PriorityQueue<string>(); // Frontier of nodes to explore, ordered by distance
+  const visitedSequence: string[] = []; // Order in which nodes were finalized/visited
+  const visitedSet = new Set<string>(); // Nodes that have been fully processed
 
-  // Initialize all nodes with infinite distance and no known predecessor
+  // Initialize all nodes with infinite distance and no predecessor
   for (const nodeId of graph.getAllNodeIds()) {
     distances.set(nodeId, Infinity);
     previous.set(nodeId, null);
   }
 
-  // Start node has zero distance to itself
+  // Seed the search from the start node
   distances.set(startNodeId, 0);
   pq.push(startNodeId, 0);
 
-  // Main Dijkstra loop: repeatedly expand the closest unvisited node
+  // Main loop: repeatedly extract the closest unvisited node and relax its edges
   while (!pq.isEmpty()) {
     const current = pq.pop();
     if (!current) break;
 
-    // Skip stale queue entries for nodes already finalized
-    // (can happen since we push duplicates instead of decrease-key)
-    if (visitedSet.has(current)) continue;
+    if (visitedSet.has(current)) continue; // Skip stale/duplicate queue entries
     visitedSet.add(current);
     visitedSequence.push(current);
 
-    // Early exit once we've reached the target - distance is guaranteed optimal here
-    if (current === targetNodeId) break;
+    if (current === targetNodeId) break; // Early exit once target is reached
 
     const currentDist = distances.get(current)!;
     const neighbors = graph.getNeighbors(current);
 
+    // Relax all outgoing edges from the current node
     for (const edge of neighbors) {
-      // Skip edges that are marked as blocked (e.g. road closures)
-      if (edge.isBlocked) continue;
+      if (edge.isBlocked) continue; // Skip blocked/unusable edges
 
-      // Choose edge weight based on which criterion we're optimizing for
+      // Choose edge weight based on the requested optimization criterion
       let weight = edge.distance;
       if (optimizeCriterion === 'time') {
         weight = edge.travelTime * (edge.trafficMultiplier || 1);
@@ -81,9 +69,9 @@ export function runDijkstra(
         weight = edge.cost * (edge.trafficMultiplier || 1);
       }
 
-      // Relaxation step: only update if this path to the neighbor is shorter than any known so far
-      const newDist = currentDist + weight;
+      const newDist = currentDist + weight; // Candidate distance to neighbor via current node
       if (newDist < (distances.get(edge.target) ?? Infinity)) {
+        // Found a shorter path to this neighbor, so update distance, predecessor, and edge info
         distances.set(edge.target, newDist);
         previous.set(edge.target, current);
         edgeUsed.set(edge.target, {
@@ -91,16 +79,15 @@ export function runDijkstra(
           cost: edge.cost,
           travelTime: edge.travelTime
         });
-        // Push the updated node back into the queue with its new priority
-        pq.push(edge.target, newDist);
+        pq.push(edge.target, newDist); // Push updated neighbor back into the frontier
       }
     }
   }
 
-  const endTime = performance.now();
-  const executionTimeMs = endTime - startTime;
+  const endTime = performance.now(); // Record end time for performance measurement
+  const executionTimeMs = endTime - startTime; // Total execution time in milliseconds
 
-  // Reconstruct path by walking backwards from target to start using the `previous` map
+  // Reconstruct path by walking backwards from target to start using the predecessor map
   const path: string[] = [];
   let curr: string | null = targetNodeId;
   while (curr !== null) {
@@ -108,19 +95,17 @@ export function runDijkstra(
     curr = previous.get(curr) || null;
   }
 
-  // Handle disconnected
-  // A valid path must actually begin at the start node
-  // (otherwise target was unreachable and reconstruction stopped early)
+  // Handle disconnected: a valid path must actually start at the start node
   const isFound = path.length > 0 && path[0] === startNodeId;
   const finalPath = isFound ? path : [];
 
-  // Accumulate totals and per-step breakdown for the final path
   let totalDistance = 0;
   let totalTime = 0;
   let totalCost = 0;
-  const steps: RouteStep[] = [];
+  const steps: RouteStep[] = []; // Step-by-step breakdown of the final route
   let runningDistance = 0;
 
+  // Build the detailed step list and totals by walking along the reconstructed path
   if (isFound) {
     for (let i = 0; i < finalPath.length - 1; i++) {
       const u = finalPath[i];
@@ -142,27 +127,24 @@ export function runDijkstra(
     }
   }
 
-  // Assemble the final result, including diagnostic metrics for the evaluation module
   return {
     path: finalPath,
-    totalDistance: Math.round(totalDistance * 100) / 100,
-    totalTime: Math.round(totalTime * 10) / 10,
-    totalCost: Math.round(totalCost * 100) / 100,
+    totalDistance: Math.round(totalDistance * 100) / 100, // Rounded total distance for the route
+    totalTime: Math.round(totalTime * 10) / 10, // Rounded total travel time for the route
+    totalCost: Math.round(totalCost * 100) / 100, // Rounded total cost for the route
     steps,
     visitedNodesCount: visitedSet.size,
     visitedSequence,
     metrics: {
       algorithmName: 'Dijkstra (Min-Heap PQ)',
-      executionTimeMs: Math.round(executionTimeMs * 1000) / 1000,
-      executionTimeUs: Math.round(executionTimeMs * 1000),
+      executionTimeMs: Math.round(executionTimeMs * 1000) / 1000, // Execution time in ms, rounded to 3 decimals
+      executionTimeUs: Math.round(executionTimeMs * 1000), // Execution time converted to microseconds
       nodesVisited: visitedSet.size,
-      // Rough memory estimate based on number of nodes touched (for algorithm comparison charts)
-      memoryEstimateKb: Math.round((graph.getAllNodeIds().length * 0.12) * 100) / 100,
+      memoryEstimateKb: Math.round((graph.getAllNodeIds().length * 0.12) * 100) / 100, // Rough memory usage estimate
       totalCost: Math.round(totalCost * 100) / 100,
       totalDistance: Math.round(totalDistance * 100) / 100,
       path: finalPath,
-      // Simple binary quality score: 100 if a path was found, 0 if target was unreachable
-      solutionQualityScore: isFound ? 100 : 0,
+      solutionQualityScore: isFound ? 100 : 0, // Simple binary quality score: found a path or not
       timeComplexity: 'O((V + E) log V)',
       spaceComplexity: 'O(V)'
     }
