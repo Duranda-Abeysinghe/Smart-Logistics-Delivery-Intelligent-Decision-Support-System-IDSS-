@@ -106,7 +106,7 @@ export function runNetworkTraversal(graph: Graph, startNodeId?: string): Connect
       }
     }
   }
-
+// Calculate graph density and record execution performance metrics
   const numEdges = graph.getAllEdges().length;
   const maxPossibleEdges = (n * (n - 1)) / 2;
   const graphDensity = maxPossibleEdges > 0 ? Math.round((numEdges / maxPossibleEdges) * 1000) / 1000 : 0;

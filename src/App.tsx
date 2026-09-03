@@ -11,7 +11,12 @@ import { IntelligentDecisionView } from './components/module4_decision/Intellige
 import { OptimizationView } from './components/module5_optimization/OptimizationView';
 import { BenchmarkSuiteView } from './components/evaluation/BenchmarkSuiteView';
 
+// Root application component. Owns the currently active module/tab and
+// orchestrates loading the live dataset from the backend API, then hands
+// that data (and a built Graph instance) down to whichever module view
+// is currently selected.
 export default function App() {
+  // Which top-level module/tab is currently visible
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
 
   // Live data loaded from the MySQL-backed API (replaces the old hardcoded
@@ -21,6 +26,8 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch the network dataset once on mount. `cancelled` guards against
+  // setting state after unmount (e.g. if the component unmounts mid-fetch).
   useEffect(() => {
     let cancelled = false;
 
@@ -45,6 +52,8 @@ export default function App() {
 
   // Build the working graph from the live MySQL-backed dataset only. No
   // synthetic/frontend-generated data is ever used for any feature or graph.
+  // Memoized so the Graph is only rebuilt when the underlying data changes,
+  // not on every render.
   const currentData = useMemo(() => {
     if (!dbData) return null;
 
@@ -62,6 +71,7 @@ export default function App() {
     };
   }, [dbData]);
 
+  // Show a loading state while the initial fetch is in flight
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center">
@@ -70,6 +80,8 @@ export default function App() {
     );
   }
 
+  // Show an error state if the fetch failed or produced no usable data,
+  // with a hint pointing developers at the likely cause (backend/API misconfig)
   if (loadError || !currentData) {
     return (
       <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center px-6">
@@ -85,6 +97,8 @@ export default function App() {
     );
   }
 
+  // Main app shell: navbar, active module's view, and footer.
+  // Only one module view renders at a time based on `activeModule`.
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
       {/* Top Navigation Bar */}

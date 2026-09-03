@@ -1,5 +1,13 @@
+// ============================================================
+// Smart Logistics & Delivery IDSS - Core Type Definitions
+// Shared types used across route optimization, allocation,
+// network analysis, decision support, and evaluation modules.
+// ============================================================
+
+// Classifies what kind of physical location a node represents in the logistics network
 export type LocationType = 'warehouse' | 'distribution_center' | 'retail_hub' | 'customer' | 'port';
 
+// Represents a single point/node in the logistics network graph
 export interface LogisticsNode {
   id: string;
   name: string;
@@ -13,6 +21,7 @@ export interface LogisticsNode {
   longitude?: number;
 }
 
+// Represents a connection (route segment) between two LogisticsNodes
 export interface LogisticsEdge {
   source: string;
   target: string;
@@ -23,6 +32,7 @@ export interface LogisticsEdge {
   isBlocked?: boolean;
 }
 
+// Represents a delivery vehicle available in the fleet
 export interface Vehicle {
   id: string;
   name: string;
@@ -35,6 +45,7 @@ export interface Vehicle {
   status: 'available' | 'in_transit' | 'maintenance';
 }
 
+// Represents a driver who can be assigned to a vehicle
 export interface Driver {
   id: string;
   name: string;
@@ -47,6 +58,7 @@ export interface Driver {
   status: 'available' | 'on_duty' | 'off_duty';
 }
 
+// Represents a single customer delivery order to be routed and allocated
 export interface DeliveryOrder {
   id: string;
   trackingNumber: string;
@@ -65,6 +77,7 @@ export interface DeliveryOrder {
   status: 'pending' | 'allocated' | 'in_transit' | 'delivered';
 }
 
+// Represents a stock item held at a specific warehouse
 export interface InventoryItem {
   id: string;
   warehouseId: string;
@@ -77,6 +90,8 @@ export interface InventoryItem {
   weightPerUnitKg: number;
 }
 
+// Captures performance/diagnostic metrics for a given algorithm run
+// (used to compare algorithms in the evaluation module)
 export interface AlgorithmMetrics {
   algorithmName: string;
   executionTimeMs: number;
@@ -92,6 +107,7 @@ export interface AlgorithmMetrics {
   spaceComplexity: string;
 }
 
+// Represents one leg/hop of a computed route, including running totals
 export interface RouteStep {
   fromNode: string;
   toNode: string;
@@ -100,6 +116,8 @@ export interface RouteStep {
   cumulativeDistance: number;
 }
 
+// Holds graph centrality metrics for a node
+// (used in the network analysis module to identify key hubs)
 export interface CentralityResult {
   nodeId: string;
   nodeName: string;
@@ -112,6 +130,8 @@ export interface CentralityResult {
   rank: number;
 }
 
+// Represents the result of assigning a set of orders to a vehicle/driver pair
+// (output of the allocation module)
 export interface AllocationAssignment {
   vehicle: Vehicle;
   driver?: Driver;
@@ -123,6 +143,8 @@ export interface AllocationAssignment {
   estimatedCost: number;
 }
 
+// Represents a single factor/criterion contributing to a decision score,
+// used to make the decision support system's reasoning explainable
 export interface DecisionExplanation {
   factor: string;
   rawScore: number;
@@ -131,6 +153,8 @@ export interface DecisionExplanation {
   interpretation: string;
 }
 
+// Represents the overall priority scoring result for an order,
+// combining multiple weighted DecisionExplanation factors
 export interface OrderDecisionScore {
   orderId: string;
   customerName: string;
@@ -143,6 +167,8 @@ export interface OrderDecisionScore {
   rulesTriggered: string[];
 }
 
+// Represents a single iteration snapshot during an iterative optimization
+// process (e.g. simulated annealing), used to visualize convergence
 export interface OptimizationIteration {
   iteration: number;
   bestCost: number;
@@ -151,6 +177,8 @@ export interface OptimizationIteration {
   acceptanceRate?: number;
 }
 
+// Represents the final result of a route optimization run (e.g. TSP-style tour),
+// including optional iteration history for charting convergence
 export interface TourResult {
   route: string[];
   totalDistance: number;
@@ -162,4 +190,5 @@ export interface TourResult {
   spaceComplexity: string;
 }
 
+// Identifies which top-level module/tab of the app is currently active
 export type ActiveModule = 'dashboard' | 'route' | 'allocation' | 'network' | 'decision' | 'optimization' | 'evaluation';

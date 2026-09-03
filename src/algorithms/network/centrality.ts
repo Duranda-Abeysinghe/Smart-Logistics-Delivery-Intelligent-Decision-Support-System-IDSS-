@@ -24,7 +24,8 @@ export function calculateNetworkCentralities(graph: Graph): CentralityAnalysisRe
   const degreeMap = new Map<string, number>();
   const closenessMap = new Map<string, number>();
   const betweennessMap = new Map<string, number>();
-
+  
+// Calculate shortest paths and centrality values for each node.
   for (const id of nodeIds) {
     degreeMap.set(id, 0);
     closenessMap.set(id, 0);

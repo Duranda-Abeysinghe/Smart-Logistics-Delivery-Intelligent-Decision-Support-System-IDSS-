@@ -11,7 +11,14 @@ export interface AllocationResult {
 
 /**
  * Greedy Resource Allocation
- * Heuristic: Sort orders by (Priority Weight * Value) / Weight and assign to smallest available vehicle that fits
+ *
+ * Strategy:
+ * 1. Calculate a priority score for each order using customer tier,
+ *    item value, weight, and deadline.
+ * 2. Process orders from the highest score to the lowest score.
+ * 3. Assign each order to the available vehicle that fits the order
+ *    while leaving the smallest remaining weight capacity.
+ *
  * Time Complexity: O(N log N + N * M) where N = orders, M = vehicles
  * Space Complexity: O(N + M)
  */
@@ -22,7 +29,7 @@ export function runGreedyAllocation(
 ): AllocationResult {
   const startTime = performance.now();
 
-  // Create working copies
+  // Select only vehicles and drivers that are currently available.
   const availableVehicles = vehicles.filter(v => v.status === 'available');
   const availableDrivers = drivers.filter(d => d.status === 'available');
 
@@ -37,8 +44,10 @@ export function runGreedyAllocation(
     estimatedCost: 0
   }));
 
-  // Score orders for sorting
+  // Calculate a priority score for each order.
+  // Higher-value, higher-priority, lighter, and more urgent orders receive higher scores.
   const tierWeights = { Platinum: 3.0, Gold: 2.0, Standard: 1.0 };
+  // Process the highest-priority orders first.
   const sortedOrders = [...orders].sort((a, b) => {
     const scoreA = (a.itemValue * tierWeights[a.customerTier]) / (a.weightKg * Math.max(0.5, a.deadlineHours));
     const scoreB = (b.itemValue * tierWeights[b.customerTier]) / (b.weightKg * Math.max(0.5, b.deadlineHours));
@@ -56,6 +65,7 @@ export function runGreedyAllocation(
 
     for (let i = 0; i < assignments.length; i++) {
       const assign = assignments[i];
+      // Check both weight and volume constraints before assigning the order.
       const wouldExceedWeight = assign.totalWeightKg + order.weightKg > assign.vehicle.capacityKg;
       const wouldExceedVolume = assign.totalVolumeM3 + order.volumeM3 > assign.vehicle.volumeM3;
 
@@ -68,6 +78,7 @@ export function runGreedyAllocation(
       }
     }
 
+    // Assign the order to the best-fit vehicle if a suitable vehicle was found.
     if (bestAssignmentIndex !== -1) {
       const target = assignments[bestAssignmentIndex];
       target.orders.push(order);
@@ -79,6 +90,7 @@ export function runGreedyAllocation(
       assigned = true;
     }
 
+    // Keep the order unassigned when no available vehicle can satisfy its constraints.
     if (!assigned) {
       unassignedOrders.push(order);
     }
@@ -87,6 +99,7 @@ export function runGreedyAllocation(
   const endTime = performance.now();
   const executionTimeMs = endTime - startTime;
 
+  // Calculate summary metrics for the completed allocation.
   const totalValueDelivered = assignments.reduce((acc, a) => acc + a.totalValueDelivered, 0);
   const totalWeightAllocated = assignments.reduce((acc, a) => acc + a.totalWeightKg, 0);
   const activeAssignments = assignments.filter(a => a.orders.length > 0);

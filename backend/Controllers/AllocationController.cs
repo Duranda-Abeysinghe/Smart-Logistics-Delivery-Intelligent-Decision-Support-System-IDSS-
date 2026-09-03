@@ -16,6 +16,7 @@ namespace SmartLogistics.IDSS.Controllers
         private readonly AppDbContext _context;
         private readonly IAllocationService _allocationService;
 
+        // Inject database context and allocation service
         public AllocationController(AppDbContext context, IAllocationService allocationService)
         {
             _context = context;
@@ -25,12 +26,17 @@ namespace SmartLogistics.IDSS.Controllers
         [HttpPost("allocate")]
         public async Task<IActionResult> AllocateResources([FromQuery] string strategy = "knapsack")
         {
+            // Load orders, vehicles, and drivers from the database
             var orders = await _context.Orders.ToListAsync();
             var vehicles = await _context.Vehicles.ToListAsync();
             var drivers = await _context.Drivers.ToListAsync();
 
+            // Allocate resources using the selected strategy
             var result = _allocationService.AllocateFleetResources(orders, vehicles, drivers, strategy);
+
             return Ok(result);
         }
     }
 }
+
+
