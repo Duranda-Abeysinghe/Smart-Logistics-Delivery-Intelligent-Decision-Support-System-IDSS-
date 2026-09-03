@@ -17,22 +17,24 @@ export function runGeneticTSP(
   const n = nodes.length;
   const distMatrix = calculateDistanceMatrix(nodes);
 
-  // Helper to generate random permutation tour
+  // Generate a random permutation while keeping node 0 as the fixed depot
   const randomTour = (): number[] => {
     const indices = Array.from({ length: n - 1 }, (_, i) => i + 1);
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-    return [0, ...indices]; // Fixed start node 0
+    return [0, ...indices];
   };
 
+  // Create the initial population of random tours
   let population: number[][] = Array.from({ length: popSize }, () => randomTour());
   let bestTour = population[0];
   let bestDist = computeTourTotalDistance(bestTour, distMatrix);
 
   const history: OptimizationIteration[] = [];
 
+  // Evaluate, select, crossover and mutate solutions for each generation
   for (let gen = 0; gen < generations; gen++) {
     const fitnessScores = population.map(chrom => ({
       chromosome: chrom,
@@ -53,11 +55,11 @@ export function runGeneticTSP(
       currentCost: Math.round(fitnessScores[0].dist * 100) / 100
     });
 
-    // Elitism: Keep top 20%
+    // Elitism: preserve the best 20% of solutions
     const eliteCount = Math.max(2, Math.floor(popSize * 0.2));
     const nextGen: number[][] = fitnessScores.slice(0, eliteCount).map(f => [...f.chromosome]);
 
-    // Fill population with Ordered Crossover (OX1)
+    // Generate new solutions using OX1 crossover and inversion mutation
     while (nextGen.length < popSize) {
       const p1 = fitnessScores[Math.floor(Math.random() * (popSize / 2))].chromosome;
       const p2 = fitnessScores[Math.floor(Math.random() * (popSize / 2))].chromosome;
@@ -68,16 +70,15 @@ export function runGeneticTSP(
       const end = Math.max(idx1, idx2);
 
       const child: (number | null)[] = Array(n).fill(null);
-      child[0] = 0; // Fixed depot
+      child[0] = 0;
 
-      // Copy slice from parent 1
+      // OX1: copy a segment from parent 1 and fill remaining nodes from parent 2
       const inChild = new Set<number>([0]);
       for (let i = start; i <= end; i++) {
         child[i] = p1[i];
         inChild.add(p1[i]);
       }
 
-      // Fill remaining from parent 2 in order
       let p2Index = 1;
       for (let i = 1; i < n; i++) {
         if (child[i] === null) {
@@ -92,7 +93,7 @@ export function runGeneticTSP(
 
       const finalChild = child as number[];
 
-      // Inversion Mutation (15% probability)
+      // Inversion mutation with 15% probability
       if (Math.random() < 0.15 && n > 3) {
         const m1 = Math.floor(Math.random() * (n - 1)) + 1;
         const m2 = Math.floor(Math.random() * (n - 1)) + 1;
@@ -130,3 +131,4 @@ export function runGeneticTSP(
     spaceComplexity: 'O(PopSize * N)'
   };
 }
+
