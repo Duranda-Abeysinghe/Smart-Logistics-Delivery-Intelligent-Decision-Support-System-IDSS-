@@ -9,11 +9,19 @@ export interface KnapsackDPResult extends AllocationResult {
   };
 }
 
+
 /**
- * 0/1 Knapsack Dynamic Programming for Single/Primary Fleet Allocation
- * Maximizes Value Delivered subject to exact Weight Capacity Constraint
- * Time Complexity: O(N * W) where N = orders, W = capacity / scale
+ * 0/1 Knapsack Dynamic Programming for Single/Primary Vehicle Allocation.
+ *
+ * Strategy:
+ * - Each order can either be selected (1) or not selected (0).
+ * - The algorithm maximizes the total value of selected orders
+ *   without exceeding the primary vehicle's weight capacity.
+ * - Weight is scaled into discrete 50kg units to keep the DP table manageable.
+ *
+ * Time Complexity: O(N * W)
  * Space Complexity: O(N * W)
+ * N = number of orders, W = scaled vehicle capacity.
  */
 export function runKnapsackDP(
   orders: DeliveryOrder[],
@@ -41,7 +49,8 @@ export function runKnapsackDP(
   const W = Math.floor(primaryVehicle.capacityKg / scale);
   const n = orders.length;
 
-  // dp[i][w] stores maximum value using subset of first i orders with weight capacity w*scale
+  // dp[i][w] stores the maximum value that can be achieved
+  // using the first i orders within a capacity of w * scale kilograms.ity w*scale
   const dp: number[][] = Array.from({ length: n + 1 }, () => Array(W + 1).fill(0));
 
   for (let i = 1; i <= n; i++) {
@@ -51,6 +60,9 @@ export function runKnapsackDP(
 
     for (let w = 0; w <= W; w++) {
       if (itemWeightDiscrete <= w) {
+        // Choose the better option:
+        // 1. Exclude the current order.
+        // 2. Include the current order and add its value to the best previous solution.
         dp[i][w] = Math.max(dp[i - 1][w], dp[i - 1][w - itemWeightDiscrete] + itemVal);
       } else {
         dp[i][w] = dp[i - 1][w];
@@ -58,10 +70,12 @@ export function runKnapsackDP(
     }
   }
 
-  // Backtrack to find chosen orders
+  // Backtrack through the DP table to identify which orders were selected
+  // in the optimal solution.
   const selectedOrders: DeliveryOrder[] = [];
   let currW = W;
   for (let i = n; i > 0; i--) {
+    // If the value changed, the current order was included in the solution.
     if (dp[i][currW] !== dp[i - 1][currW]) {
       selectedOrders.push(orders[i - 1]);
       const itemWeightDiscrete = Math.max(1, Math.ceil(orders[i - 1].weightKg / scale));
@@ -69,6 +83,7 @@ export function runKnapsackDP(
     }
   }
 
+  // Orders not included in the optimal solution remain unassigned.
   const selectedIds = new Set(selectedOrders.map(o => o.id));
   const unassignedOrders = orders.filter(o => !selectedIds.has(o.id));
 
@@ -90,7 +105,8 @@ export function runKnapsackDP(
   const endTime = performance.now();
   const executionTimeMs = endTime - startTime;
 
-  // Build a preview matrix (sampled columns for visualization)
+  // Build a smaller DP table preview for visualization.
+  // Only selected capacity columns are included to reduce the display size.
   const sampleStep = Math.max(1, Math.floor(W / 8));
   const capacityHeaders: number[] = [];
   for (let c = 0; c <= W; c += sampleStep) {
