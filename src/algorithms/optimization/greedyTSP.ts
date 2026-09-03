@@ -6,11 +6,14 @@ export function runGreedyTSP(nodes: LogisticsNode[]): TourResult {
   const n = nodes.length;
   const distMatrix = calculateDistanceMatrix(nodes);
 
+  // Start from node 0 and keep track of visited nodes
   const visited = new Set<number>();
   const tourIndices: number[] = [0];
   visited.add(0);
 
   let current = 0;
+
+  // Repeatedly select the nearest unvisited node
   while (visited.size < n) {
     let nearest = -1;
     let minDist = Infinity;
@@ -29,7 +32,8 @@ export function runGreedyTSP(nodes: LogisticsNode[]): TourResult {
     }
   }
 
-  tourIndices.push(0); // Return to start
+  // Return to the starting node to complete the tour
+  tourIndices.push(0);
 
   const endTime = performance.now();
   const executionTimeMs = endTime - startTime;
@@ -47,3 +51,5 @@ export function runGreedyTSP(nodes: LogisticsNode[]): TourResult {
     spaceComplexity: 'O(n)'
   };
 }
+
+
