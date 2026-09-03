@@ -7,9 +7,17 @@ export interface GeneticAllocationResult extends AllocationResult {
 }
 
 /**
- * Genetic Algorithm for Multi-Vehicle & Multi-Driver Resource Allocation
- * Chromosome: Array of length N (orders), where each gene is index of assigned vehicle (0 to M-1) or -1 (unassigned)
- * Fitness: Sum(Value) - Penalty(Weight Overload * $50) - Penalty(Volume Overload * $200)
+ * Genetic Algorithm for Multi-Vehicle & Multi-Driver Resource Allocation.
+ *
+ * Chromosome:
+ * - Each gene represents one delivery order.
+ * - The gene value is the index of the assigned vehicle.
+ * - -1 means the order is left unassigned.
+ *
+ * Fitness:
+ * - Rewards higher total order value.
+ * - Penalizes vehicle weight capacity violations.
+ * - Penalizes vehicle volume capacity violations.
  */
 export function runGeneticAllocation(
   orders: DeliveryOrder[],
@@ -20,8 +28,10 @@ export function runGeneticAllocation(
 ): GeneticAllocationResult {
   const startTime = performance.now();
 
+  // Only available vehicles and drivers can participate in allocation.
   const activeVehicles = vehicles.filter(v => v.status === 'available');
   const activeDrivers = drivers.filter(d => d.status === 'available');
+
   const numOrders = orders.length;
   const numVehicles = activeVehicles.length;
 
@@ -45,6 +55,7 @@ export function runGeneticAllocation(
   }
 
   // Fitness calculation
+  // Higher order value increases fitness, while capacity violations reduce fitness.
   const calculateFitness = (chromosome: number[]): { fitness: number; totalVal: number; totalWt: number } => {
     let valueSum = 0;
     let totalWeight = 0;
@@ -62,6 +73,7 @@ export function runGeneticAllocation(
       }
     }
 
+    // Apply penalties when a vehicle exceeds its weight or volume capacity.
     let penalties = 0;
     for (let v = 0; v < numVehicles; v++) {
       const vehicle = activeVehicles[v];
@@ -77,7 +89,8 @@ export function runGeneticAllocation(
     return { fitness, totalVal: valueSum, totalWt: totalWeight };
   };
 
-  // Initialize random population
+  // Create the initial population using random vehicle assignments.
+  // A value of -1 represents an order that is not assigned to any vehicle.
   let population: number[][] = [];
   for (let p = 0; p < populationSize; p++) {
     const chromosome: number[] = [];
@@ -113,17 +126,17 @@ export function runGeneticAllocation(
       avgFitness: Math.round(avgFit)
     });
 
-    // Selection: Top 25% Elites survive directly
+    // Selection: Top 20% Elites survive directly
     const eliteCount = Math.max(2, Math.floor(populationSize * 0.2));
     const nextGeneration: number[][] = evaluated.slice(0, eliteCount).map(e => [...e.chromosome]);
 
     // Fill remaining population with crossover and mutation
     while (nextGeneration.length < populationSize) {
-      // Tournament selection
+      // Select parents randomly from the top half of the population.
       const parentA = evaluated[Math.floor(Math.random() * (populationSize / 2))].chromosome;
       const parentB = evaluated[Math.floor(Math.random() * (populationSize / 2))].chromosome;
 
-      // Two-point crossover
+      // Two-point crossover: copy a segment from parent A and the remaining genes from parent B.
       const pt1 = Math.floor(Math.random() * numOrders);
       const pt2 = Math.floor(Math.random() * numOrders);
       const start = Math.min(pt1, pt2);
@@ -138,7 +151,7 @@ export function runGeneticAllocation(
         }
       }
 
-      // Mutation (10% chance per gene)
+      // Mutation: each gene has a 10% chance of being assigned a new random vehicle.
       for (let i = 0; i < numOrders; i++) {
         if (Math.random() < 0.1) {
           child[i] = Math.floor(Math.random() * (numVehicles + 1)) - 1;
@@ -154,7 +167,8 @@ export function runGeneticAllocation(
   const endTime = performance.now();
   const executionTimeMs = endTime - startTime;
 
-  // Build assignments from best chromosome
+  // Convert the best chromosome found by the genetic algorithm
+  // into the final vehicle-order assignments.
   const assignments: AllocationAssignment[] = activeVehicles.map((vehicle, idx) => ({
     vehicle,
     driver: activeDrivers[idx % Math.max(1, activeDrivers.length)],
