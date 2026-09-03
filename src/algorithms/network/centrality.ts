@@ -79,6 +79,7 @@ export function calculateNetworkCentralities(graph: Graph): CentralityAnalysisRe
         }
       }
     }
+
     // Accumulate closeness distance
     let totalDistFromS = 0;
     let reachableCount = 0;
@@ -165,4 +166,3 @@ export function calculateNetworkCentralities(graph: Graph): CentralityAnalysisRe
     }
   };
 }
-

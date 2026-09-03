@@ -27,8 +27,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Safety',
     priorityLevel: 1,
     conditionDescription: 'isPerishable == true AND deadlineHours <= 4',
-    actionDescription:
-      'Mandate temperature-controlled insulated container + immediate dispatch routing',
+    actionDescription: 'Mandate temperature-controlled insulated container + immediate dispatch routing',
     predicate: (o) => o.isPerishable && o.deadlineHours <= 4
   },
   {
@@ -37,8 +36,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'SLA',
     priorityLevel: 1,
     conditionDescription: 'customerTier == "Platinum"',
-    actionDescription:
-      'Lock top priority time slot with dedicated courier tracking notifications',
+    actionDescription: 'Lock top priority time slot with dedicated courier tracking notifications',
     predicate: (o) => o.customerTier === 'Platinum'
   },
   {
@@ -47,8 +45,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Equipment',
     priorityLevel: 2,
     conditionDescription: 'weightKg > 1500',
-    actionDescription:
-      'Assign Class-B Heavy Truck with hydraulic lift-gate and dual handling crew',
+    actionDescription: 'Assign Class-B Heavy Truck with hydraulic lift-gate and dual handling crew',
     predicate: (o) => o.weightKg > 1500
   },
   {
@@ -57,8 +54,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Safety',
     priorityLevel: 2,
     conditionDescription: 'itemValue >= 10000',
-    actionDescription:
-      'Direct-point-to-point transit without secondary hub cross-docking; driver rating >= 4.8',
+    actionDescription: 'Direct-point-to-point transit without secondary hub cross-docking; driver rating >= 4.8',
     predicate: (o) => o.itemValue >= 10000
   },
   {
@@ -67,8 +63,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Environmental',
     priorityLevel: 3,
     conditionDescription: 'weightKg <= 100 AND volumeM3 <= 1.0',
-    actionDescription:
-      'Route via Electric Cargo Bike to reduce urban carbon footprint by 85%',
+    actionDescription: 'Route via Electric Cargo Bike to reduce urban carbon footprint by 85%',
     predicate: (o) => o.weightKg <= 100 && o.volumeM3 <= 1.0
   },
   {
@@ -77,8 +72,7 @@ export const LOGISTICS_RULESET: BusinessRule[] = [
     category: 'Safety',
     priorityLevel: 2,
     conditionDescription: 'fragility == "High"',
-    actionDescription:
-      'Top-tier floor placement; shock-absorbing restraint netting required',
+    actionDescription: 'Top-tier floor placement; shock-absorbing restraint netting required',
     predicate: (o) => o.fragility === 'High'
   }
 ];
@@ -106,22 +100,18 @@ export function runRuleBasedExpertSystem(
         mandatoryEquipment.push('Insulated Refrigerator Pod (-18°C)');
         handlingInstructions.push('Maintain active thermal telemetry log.');
       }
-
       if (rule.id === 'R3-HEAVY-CARGO') {
         mandatoryEquipment.push('Hydraulic Tail-Lift', 'Pallet Jack');
         handlingInstructions.push('Two-person team required for offloading.');
       }
-
       if (rule.id === 'R4-HIGH-VALUE') {
         mandatoryEquipment.push('Tamper-Evident Security Seal');
         handlingInstructions.push('Require dual signature on delivery receipt.');
       }
-
       if (rule.id === 'R6-FRAGILE-CARE') {
         mandatoryEquipment.push('Air-Cushion Corner Guards');
         handlingInstructions.push('Do NOT stack other cargo on top.');
       }
-
       if (rule.id === 'R5-ECO-BIKE') {
         mandatoryEquipment.push('Weatherproof Cargo Pannier');
         handlingInstructions.push('Urban cycleway transit approved.');
@@ -129,19 +119,15 @@ export function runRuleBasedExpertSystem(
     }
 
     const finalDispatchDecision =
-      triggered.some(
-        r => r.id === 'R1-COLDCHAIN' || r.id === 'R2-PLATINUM-SLA'
-      )
+      triggered.some(r => r.id === 'R1-COLDCHAIN' || r.id === 'R2-PLATINUM-SLA')
         ? 'EXPEDITED DIRECT DISPATCH'
         : triggered.some(r => r.id === 'R3-HEAVY-CARGO')
-          ? 'HEAVY FREIGHT CONSOLIDATION'
-          : 'STANDARD SCHEDULED TRANSIT';
+        ? 'HEAVY FREIGHT CONSOLIDATION'
+        : 'STANDARD SCHEDULED TRANSIT';
 
     const justificationSummary =
       triggered.length > 0
-        ? `Order triggered ${triggered.length} operational rules (${triggered
-            .map(r => r.id)
-            .join(', ')}) enforcing specialized SLA and safety compliance.`
+        ? `Order triggered ${triggered.length} operational rules (${triggered.map(r => r.id).join(', ')}) enforcing specialized SLA and safety compliance.`
         : 'Standard operating procedure applied with default SLA window.';
 
     return {

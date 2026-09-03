@@ -83,7 +83,8 @@ export function runNetworkTraversal(graph: Graph, startNodeId?: string): Connect
     if (!disc.has(node)) {
       bridgeDFS(node);
     }
-}
+  }
+
   // Calculate Graph Diameter (max shortest path in largest component)
   let maxDistance = 0;
   for (const source of allNodes) {
@@ -131,4 +132,3 @@ export function runNetworkTraversal(graph: Graph, startNodeId?: string): Connect
     }
   };
 }
-

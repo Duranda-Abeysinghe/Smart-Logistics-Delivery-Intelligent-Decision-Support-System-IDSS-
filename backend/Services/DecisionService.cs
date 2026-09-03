@@ -74,9 +74,9 @@ namespace SmartLogistics.IDSS.Services
                                       composite >= 50 ? "HIGH_PRIORITY" :
                                       composite >= 30 ? "STANDARD" : "LOW_FLEXIBLE";
 
-                string slot = ord.DeadlineHours <= 2.0 ? "Immediate Dispatch (< 30 min)" :
-                              ord.DeadlineHours <= 4.0 ? "Morning Batch (1-2 hours)" :
-                              ord.DeadlineHours <= 8.0 ? "Same-Day Afternoon" : "Scheduled Next-Day Window";
+                string slot = ord.DeadlineHours <= 2.0m ? "Immediate Dispatch (< 30 min)" :
+                            ord.DeadlineHours <= 4.0m ? "Morning Batch (1-2 hours)" :
+                            ord.DeadlineHours <= 8.0m ? "Same-Day Afternoon" : "Scheduled Next-Day Window";
 
                 // 4. Rule-Based Compliance Directives
                 var rules = new List<string>();

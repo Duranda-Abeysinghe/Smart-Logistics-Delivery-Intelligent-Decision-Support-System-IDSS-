@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ActiveModule, LogisticsNode, LogisticsEdge, Vehicle, Driver, DeliveryOrder } from './types';
-import { DEFAULT_NODES, DEFAULT_EDGES, DEFAULT_VEHICLES, DEFAULT_DRIVERS, DEFAULT_ORDERS } from './data/defaultData';
 import { Graph } from './dataStructures/Graph';
-import { generateSyntheticDataset } from './algorithms/benchmark/datasetGenerator';
+import { fetchNetworkData, NetworkDataResponse } from './services/api';
 import { Navbar } from './components/layout/Navbar';
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
 import { RouteOptimizationView } from './components/module1_route/RouteOptimizationView';
@@ -14,29 +13,77 @@ import { BenchmarkSuiteView } from './components/evaluation/BenchmarkSuiteView';
 
 export default function App() {
   const [activeModule, setActiveModule] = useState<ActiveModule>('dashboard');
-  const [datasetSize, setDatasetSize] = useState<'default' | 'medium' | 'large'>('default');
 
-  // Generate or load dataset based on selection
+  // Live data loaded from the MySQL-backed API (replaces the old hardcoded
+  // DEFAULT_NODES / DEFAULT_EDGES / DEFAULT_VEHICLES / DEFAULT_DRIVERS /
+  // DEFAULT_ORDERS constants from src/data/defaultData.ts).
+  const [dbData, setDbData] = useState<NetworkDataResponse | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchNetworkData()
+      .then(data => {
+        if (!cancelled) {
+          setDbData(data);
+          setIsLoading(false);
+        }
+      })
+      .catch(err => {
+        if (!cancelled) {
+          setLoadError(err instanceof Error ? err.message : 'Failed to load data');
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Build the working graph from the live MySQL-backed dataset only. No
+  // synthetic/frontend-generated data is ever used for any feature or graph.
   const currentData = useMemo(() => {
-    if (datasetSize === 'default') {
-      const graph = new Graph();
-      DEFAULT_NODES.forEach(n => graph.addNode(n));
-      DEFAULT_EDGES.forEach(e => graph.addEdge(e, true));
+    if (!dbData) return null;
 
-      return {
-        graph,
-        nodes: DEFAULT_NODES,
-        edges: DEFAULT_EDGES,
-        vehicles: DEFAULT_VEHICLES,
-        drivers: DEFAULT_DRIVERS,
-        orders: DEFAULT_ORDERS
-      };
-    } else if (datasetSize === 'medium') {
-      return generateSyntheticDataset(50);
-    } else {
-      return generateSyntheticDataset(150);
-    }
-  }, [datasetSize]);
+    const graph = new Graph();
+    dbData.nodes.forEach(n => graph.addNode(n));
+    dbData.edges.forEach(e => graph.addEdge(e, true));
+
+    return {
+      graph,
+      nodes: dbData.nodes,
+      edges: dbData.edges,
+      vehicles: dbData.vehicles,
+      drivers: dbData.drivers,
+      orders: dbData.orders
+    };
+  }, [dbData]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center">
+        <div className="text-slate-500 text-sm">Loading logistics data from database…</div>
+      </div>
+    );
+  }
+
+  if (loadError || !currentData) {
+    return (
+      <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center px-6">
+        <div className="max-w-md text-center">
+          <div className="text-red-600 font-semibold mb-2">Could not load data from the API</div>
+          <div className="text-slate-500 text-sm mb-2">{loadError}</div>
+          <div className="text-slate-400 text-xs">
+            Make sure the ASP.NET Core backend is running and connected to the MySQL
+            database (see sql/schema.sql), and that VITE_API_BASE_URL points at it.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
@@ -44,8 +91,6 @@ export default function App() {
       <Navbar
         activeModule={activeModule}
         onSelectModule={setActiveModule}
-        datasetSize={datasetSize}
-        onChangeDatasetSize={setDatasetSize}
       />
 
       {/* Main Content Area */}
@@ -97,7 +142,14 @@ export default function App() {
         )}
 
         {activeModule === 'evaluation' && (
-          <BenchmarkSuiteView />
+          <BenchmarkSuiteView
+            graph={currentData.graph}
+            nodes={currentData.nodes}
+            edges={currentData.edges}
+            orders={currentData.orders}
+            vehicles={currentData.vehicles}
+            drivers={currentData.drivers}
+          />
         )}
       </main>
 

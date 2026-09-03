@@ -1,32 +1,17 @@
-# React + TypeScript + Vite
+# Smart Logistics & Delivery — Intelligent Decision Support System (IDSS)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A full-stack IDSS built for the PDSA Coursework 1 (BSc Hons Computing, 26.1 / NIBM), solving five computational problems in supply chain and fleet operations:
 
-Currently, two official plugins are available:
+1. **Intelligent Route Optimization** — Dijkstra, A*, Bellman-Ford, Floyd-Warshall
+2. **Intelligent Resource Allocation** — Greedy, 0/1 Knapsack DP, Genetic Algorithm
+3. **Network Analysis** — BFS/DFS, Betweenness/Closeness/Degree Centrality, Tarjan's Bridge Detection
+4. **Intelligent Decision Module** — Weighted Scoring, k-NN Classifier, Rule Engine
+5. **Optimization Module** — Held-Karp Exact DP (TSP), Greedy, Simulated Annealing, Genetic Algorithm
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
 
-## React Compiler
+- **Frontend**: React 19 + Vite + TypeScript + Tailwind CSS + Recharts
+- **Backend**: ASP.NET Core Web API (.NET 8) + Entity Framework Core
+- **Database**: MySQL 8.0
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+See [SETUP_AND_RUN.md](SETUP_AND_RUN.md) for full local setup instructions, and [docs/README.md](docs/README.md) for the system architecture overview.

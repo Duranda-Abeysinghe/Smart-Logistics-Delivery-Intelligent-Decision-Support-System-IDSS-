@@ -14,7 +14,7 @@ builder.Services.AddControllers()
 
 // Configure MySQL Connection with Entity Framework Core
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=localhost;Port=3306;Database=smart_logistics_idss;User=root;Password=password;";
+   ?? "Server=localhost;Port=3306;Database=smart_logistics_idss;User=root;Password=admin123;TreatTinyAsBoolean=true;";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));

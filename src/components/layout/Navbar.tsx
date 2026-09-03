@@ -14,15 +14,11 @@ import {
 interface NavbarProps {
   activeModule: ActiveModule;
   onSelectModule: (module: ActiveModule) => void;
-  datasetSize: 'default' | 'medium' | 'large';
-  onChangeDatasetSize: (size: 'default' | 'medium' | 'large') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeModule,
-  onSelectModule,
-  datasetSize,
-  onChangeDatasetSize
+  onSelectModule
 }) => {
   const navItems = [
     { id: 'dashboard' as ActiveModule, label: 'Dashboard', icon: LayoutDashboard },
@@ -54,25 +50,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Intelligent Decision Support System • ASP.NET Core API & MySQL Architecture
               </p>
             </div>
-          </div>
-
-          {/* Dataset Switcher */}
-          <div className="flex items-center gap-2 bg-slate-800/80 p-1 rounded-lg border border-slate-700">
-            <span className="text-xs text-slate-400 px-2 font-medium">Logistics Network:</span>
-            {(['default', 'medium', 'large'] as const).map((size) => (
-              <button
-                key={size}
-                id={`btn-dataset-${size}`}
-                onClick={() => onChangeDatasetSize(size)}
-                className={`px-2.5 py-1 text-xs rounded font-medium transition-all ${
-                  datasetSize === size
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
-                }`}
-              >
-                {size === 'default' ? 'Small (12 Hubs)' : size === 'medium' ? 'Medium (50 Hubs)' : 'Large (150 Hubs)'}
-              </button>
-            ))}
           </div>
         </div>
 
