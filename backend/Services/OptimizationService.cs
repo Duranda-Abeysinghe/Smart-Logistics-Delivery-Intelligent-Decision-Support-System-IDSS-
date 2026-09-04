@@ -8,6 +8,8 @@ namespace SmartLogistics.IDSS.Services
         TourOptimizationResponse OptimizeDeliveryTour(List<Location> waypoints, string algorithm, int iterations);
     }
 
+    // Snapshot of solver progress at a given iteration/generation, used to
+    // chart convergence over time in the UI.
     public class TourIterationStep
     {
         public int Iteration { get; set; }
@@ -16,6 +18,8 @@ namespace SmartLogistics.IDSS.Services
         public double Temperature { get; set; }
     }
 
+    // Full result of a tour optimization run: the optimized route, its cost/
+    // distance metrics, convergence history, and performance/complexity info.
     public class TourOptimizationResponse
     {
         public List<string> OptimizedTourNodeIds { get; set; } = new();
@@ -32,6 +36,8 @@ namespace SmartLogistics.IDSS.Services
 
     public class OptimizationService : IOptimizationService
     {
+        // Computes an optimized delivery tour over the given waypoints using the
+        // requested algorithm ("exact_dp", "greedy", "genetic", or default = simulated annealing).
         public TourOptimizationResponse OptimizeDeliveryTour(
             List<Location> waypoints, 
             string algorithm, 
@@ -40,6 +46,7 @@ namespace SmartLogistics.IDSS.Services
             var sw = Stopwatch.StartNew();
             int n = waypoints.Count;
 
+            // Trivial case: nothing to optimize with 0 or 1 waypoints
             if (n <= 1)
             {
                 return new TourOptimizationResponse
@@ -51,6 +58,7 @@ namespace SmartLogistics.IDSS.Services
             }
 
             // Distance Matrix calculation
+            // Precompute pairwise Euclidean distances (scaled to km) between all waypoints
             double[,] dist = new double[n, n];
             for (int i = 0; i < n; i++)
             {
@@ -62,6 +70,7 @@ namespace SmartLogistics.IDSS.Services
                 }
             }
 
+            // Sums edge distances along a tour, including the return trip back to the start
             double CalculateTourDistance(List<int> tour)
             {
                 double d = 0;
@@ -84,14 +93,18 @@ namespace SmartLogistics.IDSS.Services
             if (algoKey == "exact_dp" && n <= 14)
             {
                 // Held-Karp Exact Dynamic Programming with Bitmask Memoization O(n^2 * 2^n)
+                // Only feasible for small n due to exponential state space; guards against n > 14 above.
                 int numStates = 1 << n;
                 double[,] memo = new double[numStates, n];
                 int[,] parent = new int[numStates, n];
 
+                // -1 marks "not yet computed" for memoization
                 for (int i = 0; i < numStates; i++)
                     for (int j = 0; j < n; j++)
                         memo[i, j] = -1.0;
 
+                // Recursively finds the minimum cost to complete the tour from `pos`,
+                // having already visited the set of nodes encoded in `mask`
                 double SolveDP(int mask, int pos)
                 {
                     if (mask == (1 << n) - 1) return dist[pos, 0];
@@ -119,6 +132,8 @@ namespace SmartLogistics.IDSS.Services
                 }
 
                 bestDist = SolveDP(1, 0);
+
+                // Reconstruct the optimal tour by walking the parent pointers
                 bestTour = new List<int> { 0 };
                 int currMask = 1, currPos = 0;
                 for (int s = 0; s < n - 1; s++)
@@ -137,6 +152,7 @@ namespace SmartLogistics.IDSS.Services
             else if (algoKey == "greedy")
             {
                 // Greedy Nearest Neighbor Heuristic
+                // Repeatedly hop to the closest unvisited waypoint from the current position
                 var visited = new bool[n];
                 bestTour = new List<int> { 0 };
                 visited[0] = true;
@@ -168,13 +184,15 @@ namespace SmartLogistics.IDSS.Services
             else if (algoKey == "genetic")
             {
                 // Genetic Algorithm: Order Crossover (OX1) + Swap Mutation + Tournament Selection
-                var rand = new Random(42);
+                var rand = new Random(42); // fixed seed for reproducible results
                 int populationSize = 40;
                 int generations = Math.Max(30, Math.Min(iterations, 200));
                 double mutationRate = 0.15;
 
+                // Genes represent all waypoints except the fixed starting depot (node 0)
                 var baseGenes = Enumerable.Range(1, n - 1).ToList();
 
+                // Produces a random permutation of the genes (Fisher-Yates shuffle)
                 List<int> ShuffledChromosome()
                 {
                     var arr = new List<int>(baseGenes);
@@ -186,6 +204,7 @@ namespace SmartLogistics.IDSS.Services
                     return arr;
                 }
 
+                // Fitness function: total tour distance when the chromosome is prefixed with the depot
                 double ChromosomeDistance(List<int> chromosome)
                 {
                     var full = new List<int> { 0 };
@@ -193,6 +212,8 @@ namespace SmartLogistics.IDSS.Services
                     return CalculateTourDistance(full);
                 }
 
+                // OX1 crossover: copies a random slice from parentA, then fills remaining
+                // positions with parentB's genes in order, skipping duplicates
                 List<int> OrderCrossover(List<int> parentA, List<int> parentB)
                 {
                     int len = parentA.Count;
@@ -217,6 +238,7 @@ namespace SmartLogistics.IDSS.Services
                     return child.Select(g => g!.Value).ToList();
                 }
 
+                // With probability mutationRate, swaps two random genes in the chromosome
                 List<int> SwapMutate(List<int> chromosome)
                 {
                     var mutated = new List<int>(chromosome);
@@ -235,6 +257,7 @@ namespace SmartLogistics.IDSS.Services
 
                 for (int gen = 0; gen < generations; gen++)
                 {
+                    // Evaluate fitness of the whole population, sorted best-first
                     var evaluated = population
                         .Select(c => (chromosome: c, dist: ChromosomeDistance(c)))
                         .OrderBy(e => e.dist)
@@ -246,9 +269,11 @@ namespace SmartLogistics.IDSS.Services
                         bestChromosome = new List<int>(evaluated[0].chromosome);
                     }
 
+                    // Elitism: carry the top performers straight into the next generation
                     int eliteCount = Math.Max(2, populationSize / 10);
                     var nextGen = evaluated.Take(eliteCount).Select(e => new List<int>(e.chromosome)).ToList();
 
+                    // Fill the rest of the next generation via crossover + mutation of random parents
                     while (nextGen.Count < populationSize)
                     {
                         var parentA = evaluated[rand.Next(evaluated.Count)].chromosome;
@@ -257,6 +282,7 @@ namespace SmartLogistics.IDSS.Services
                     }
                     population = nextGen;
 
+                    // Record convergence snapshots at intervals for the history chart
                     if (gen % Math.Max(1, generations / 20) == 0 || gen == generations - 1)
                     {
                         history.Add(new TourIterationStep
@@ -279,6 +305,7 @@ namespace SmartLogistics.IDSS.Services
             else
             {
                 // Simulated Annealing with 2-Opt Neighborhood Operations
+                // Default algorithm when none of the above keys match
                 var currentTour = Enumerable.Range(0, n).ToList();
                 double currentDist = CalculateTourDistance(currentTour);
                 bestTour = new List<int>(currentTour);
@@ -286,10 +313,11 @@ namespace SmartLogistics.IDSS.Services
 
                 double temp = 100.0;
                 double coolingRate = 0.992;
-                var rand = new Random(42);
+                var rand = new Random(42); // fixed seed for reproducible results
 
                 for (int iter = 0; iter < iterations; iter++)
                 {
+                    // Pick a random segment [i, k] to reverse (2-opt move)
                     int i = rand.Next(1, n);
                     int k = rand.Next(1, n);
                     if (i > k) (i, k) = (k, i);
@@ -300,6 +328,8 @@ namespace SmartLogistics.IDSS.Services
                     double neighborDist = CalculateTourDistance(neighbor);
                     double delta = neighborDist - currentDist;
 
+                    // Accept improving moves always; accept worsening moves probabilistically
+                    // based on current temperature (classic simulated annealing acceptance rule)
                     if (delta < 0 || Math.Exp(-delta / temp) > rand.NextDouble())
                     {
                         currentTour = neighbor;
@@ -312,8 +342,9 @@ namespace SmartLogistics.IDSS.Services
                         }
                     }
 
-                    temp *= coolingRate;
+                    temp *= coolingRate; // gradually cool to reduce acceptance of worse moves
 
+                    // Record convergence snapshots at intervals for the history chart
                     if (iter % (iterations / 20) == 0 || iter == iterations - 1)
                     {
                         history.Add(new TourIterationStep
@@ -331,12 +362,15 @@ namespace SmartLogistics.IDSS.Services
                 spaceComplexity = "O(N)";
             }
 
+            // Map internal indices back to real location IDs and close the loop at the depot
             var finalPathIds = bestTour.Select(idx => waypoints[idx].LocationId).ToList();
             finalPathIds.Add(waypoints[bestTour[0]].LocationId); // return to depot
 
             sw.Stop();
             long microseconds = (long)(sw.Elapsed.TotalMilliseconds * 1000);
 
+            // Build the final response, including derived cost/fuel-savings estimates
+            // and performance metrics for the run
             return new TourOptimizationResponse
             {
                 OptimizedTourNodeIds = finalPathIds,
