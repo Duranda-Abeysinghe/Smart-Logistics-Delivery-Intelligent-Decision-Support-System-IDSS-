@@ -12,16 +12,6 @@ import { runKNNClassification } from '../decision/knnClassifier';
 import { runGreedyTSP } from '../optimization/greedyTSP';
 import { runSimulatedAnnealing } from '../optimization/simulatedAnnealing';
 
-// =============================================================================
-// Benchmark Suite
-//
-// Measures real, live execution time of each algorithm running against the
-// ACTUAL dataset loaded from the MySQL database (nodes, edges, vehicles,
-// drivers, orders). This intentionally does NOT synthesize or randomly
-// generate any locations/orders/fleet data - every timing here is a genuine
-// measurement taken against whatever is currently stored in the database.
-// =============================================================================
-
 export interface BenchmarkPoint {
   datasetSize: number;
   algorithmName: string;
