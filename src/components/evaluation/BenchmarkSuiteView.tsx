@@ -21,6 +21,9 @@ import {
   Legend 
 } from 'recharts';
 
+// Main view for the benchmark suite: runs live algorithm benchmarks against
+// the current dataset and renders them as charts, a summary table, and
+// operational guidance across three tabs.
 export const BenchmarkSuiteView: React.FC<BenchmarkInputDataset> = ({
   graph,
   nodes,
@@ -29,18 +32,24 @@ export const BenchmarkSuiteView: React.FC<BenchmarkInputDataset> = ({
   vehicles,
   drivers
 }) => {
+  // Which tab is currently active, and whether a benchmark run is in progress
   const [activeTab, setActiveTab] = useState<'benchmarks' | 'matrix' | 'recommendations'>('benchmarks');
   const [isRunning, setIsRunning] = useState<boolean>(false);
 
+  // Bundle the incoming props into a single dataset object for the benchmark runner,
+  // recomputed only when the underlying data actually changes
   const dataset: BenchmarkInputDataset = useMemo(
     () => ({ graph, nodes, edges, orders, vehicles, drivers }),
     [graph, nodes, edges, orders, vehicles, drivers]
   );
 
+  // Initial benchmark results, computed once on mount from the live dataset
   const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkSuiteResult>(() => {
     return runFullBenchmarkSuite(dataset);
   });
 
+  // Re-runs the benchmark suite on demand (small artificial delay so the
+  // "running" state/spinner is visibly shown to the user)
   const handleRerun = () => {
     setIsRunning(true);
     setTimeout(() => {
@@ -52,6 +61,8 @@ export const BenchmarkSuiteView: React.FC<BenchmarkInputDataset> = ({
   // Process live measurements for charts — every value below comes directly
   // from an algorithm run against the actual database-backed dataset above,
   // there is no simulated/synthetic scaling data.
+
+  // Reshape routing benchmark points into the format recharts expects for the bar chart
   const routeChartData = useMemo(() => {
     const find = (name: string) => benchmarkResult.points.find(p => p.module === 'Routing' && p.algorithmName === name);
     return [{
@@ -62,6 +73,7 @@ export const BenchmarkSuiteView: React.FC<BenchmarkInputDataset> = ({
     }];
   }, [benchmarkResult]);
 
+  // Reshape allocation benchmark points into the format recharts expects for the bar chart
   const allocationChartData = useMemo(() => {
     const find = (name: string) => benchmarkResult.points.find(p => p.module === 'Allocation' && p.algorithmName === name);
     return [{
@@ -238,7 +250,7 @@ export const BenchmarkSuiteView: React.FC<BenchmarkInputDataset> = ({
         </div>
       )}
 
-      {/* Tab 2: Latency Matrix */}
+      {/* Tab 2: Latency Matrix — static SLA tier reference cards */}
       {activeTab === 'matrix' && (
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
           <div>
@@ -276,7 +288,7 @@ export const BenchmarkSuiteView: React.FC<BenchmarkInputDataset> = ({
         </div>
       )}
 
-      {/* Tab 3: Operational Recommendations */}
+      {/* Tab 3: Operational Recommendations — static best-practice guidance */}
       {activeTab === 'recommendations' && (
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
           <div>
